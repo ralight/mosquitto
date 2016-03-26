@@ -28,6 +28,7 @@ OBJS=	mosquitto.o \
 		loop.o \
 		memory_mosq.o \
 		persist.o \
+		persist_builtin.o \
 		net.o \
 		net_mosq.o \
 		packet_mosq.o \
@@ -59,10 +60,10 @@ mosquitto.o : mosquitto.c mosquitto_broker.h
 
 bridge.o : bridge.c mosquitto_broker.h
 	${CROSS_COMPILE}${CC} $(BROKER_CFLAGS) -c $< -o $@
-	
+
 conf.o : conf.c mosquitto_broker.h
 	${CROSS_COMPILE}${CC} $(BROKER_CFLAGS) -c $< -o $@
-	
+
 context.o : context.c mosquitto_broker.h
 	${CROSS_COMPILE}${CC} $(BROKER_CFLAGS) -c $< -o $@
 
@@ -116,11 +117,14 @@ net.o : net.c mosquitto_broker.h
 
 net_mosq.o : ../lib/net_mosq.c ../lib/net_mosq.h
 	${CROSS_COMPILE}${CC} $(BROKER_CFLAGS) -c $< -o $@
-	
-persist.o : persist.c persist.h mosquitto_broker.h
-	${CROSS_COMPILE}${CC} $(BROKER_CFLAGS) -c $< -o $@
-	
+
 packet_mosq.o : ../lib/packet_mosq.c ../lib/packet_mosq.h
+	${CROSS_COMPILE}${CC} $(BROKER_CFLAGS) -c $< -o $@
+
+persist.o : persist.c mosquitto_broker.h
+	${CROSS_COMPILE}${CC} $(BROKER_CFLAGS) -c $< -o $@
+
+persist_builtin.o : persist_builtin.c persist_builtin.h mosquitto_broker.h
 	${CROSS_COMPILE}${CC} $(BROKER_CFLAGS) -c $< -o $@
 
 read_handle.o : read_handle.c mosquitto_broker.h
@@ -199,7 +203,7 @@ uninstall :
 	-rm -f ${DESTDIR}${prefix}/include/mosquitto_plugin.h
 	-rm -f ${DESTDIR}${prefix}/bin/mosquitto_passwd
 
-clean : 
+clean :
 	-rm -f *.o mosquitto mosquitto_passwd
 
 reallyclean : clean

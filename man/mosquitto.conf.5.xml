@@ -127,7 +127,7 @@
 						for the topic keyword, but using pattern as the
 						keyword.</para>
 					<para><code>pattern [read|write|readwrite] &lt;topic&gt;</code></para>
-					
+
 					<para>The patterns available for substition are:</para>
 					<itemizedlist mark="circle">
 						<listitem><para>%c to match the client id of the client</para></listitem>
@@ -425,17 +425,26 @@
 				<term><option>persistence</option> [ true | false ]</term>
 				<listitem>
 					<para>If <replaceable>true</replaceable>, connection,
-						subscription and message data will be written to the
-						disk in mosquitto.db at the location dictated by
-						persistence_location. When mosquitto is restarted, it
-						will reload the information stored in mosquitto.db. The
-						data will be written to disk when mosquitto closes and
-						also at periodic intervals as defined by
-						autosave_interval. Writing of the persistence database
-						may also be forced by sending mosquitto the SIGUSR1
-						signal. If <replaceable>false</replaceable>, the data
-						will be stored in memory only. Defaults to
-						<replaceable>false</replaceable>.</para>
+						subscription and message data will be written to disk.
+						There are two options for persistence, either the
+						build-in persistence provided as part of mosquitto, or
+						a persistence plugin. See the
+						<option>persistence_plugin</option> option.</para>
+
+					<para>If using built-in persistence data is stored by
+						default in the file mosquitto.db at the location
+						dictated by <option>persistence_location</option>. When
+						mosquitto is restarted, it will reload the persistence
+						information stored in mosquitto.db. The data will be
+						written to disk when mosquitto closes and also at
+						periodic intervals as defined by autosave_interval.
+						Writing of the persistence database may also be forced
+						by sending mosquitto the SIGUSR1 signal.</para>
+
+					<para>If <option>persistence</option> is
+						<replaceable>false</replaceable>, the data will be
+						stored in memory only. This is the default
+						value.</para>
 					<para>Reloaded on reload signal.</para>
 				</listitem>
 			</varlistentry>
@@ -445,6 +454,13 @@
 					<para>The filename to use for the persistent database.
 						Defaults to mosquitto.db.</para>
 					<para>Reloaded on reload signal.</para>
+				</listitem>
+			</varlistentry>
+			<varlistentry>
+				<term><option>persistence_plugin</option> <replaceable>plugin</replaceable></term>
+				<listitem>
+					<para>Path to the persistence plugin to use. If defined,
+						built-in persistence will be disabled.</para>
 				</listitem>
 			</varlistentry>
 			<varlistentry>

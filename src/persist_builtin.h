@@ -14,22 +14,10 @@ Contributors:
    Roger Light - initial implementation and documentation.
 */
 
-#ifndef PERSIST_H
-#define PERSIST_H
+#ifndef PERSIST_BUILTIN_H
+#define PERSIST_BUILTIN_H
 
-#define MOSQ_DB_VERSION 3
-
-/* DB read/write */
-const unsigned char magic[15] = {0x00, 0xB5, 0x00, 'm','o','s','q','u','i','t','t','o',' ','d','b'};
-#define DB_CHUNK_CFG 1
-#define DB_CHUNK_MSG_STORE 2
-#define DB_CHUNK_CLIENT_MSG 3
-#define DB_CHUNK_RETAIN 4
-#define DB_CHUNK_SUB 5
-#define DB_CHUNK_CLIENT 6
-/* End DB read/write */
-
-#define read_e(f, b, c) if(fread(b, 1, c, f) != c){ goto error; }
-#define write_e(f, b, c) if(fwrite(b, 1, c, f) != c){ goto error; }
+int persist__builtin_backup(struct mosquitto_db *db, bool shutdown);
+int persist__builtin_restore(struct mosquitto_db *db);
 
 #endif

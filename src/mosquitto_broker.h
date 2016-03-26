@@ -208,6 +208,7 @@ struct mosquitto__config {
 	char *persistence_location;
 	char *persistence_file;
 	char *persistence_filepath;
+	char *persistence_plugin;
 	time_t persistent_client_expiration;
 	char *pid_file;
 	char *psk_file;

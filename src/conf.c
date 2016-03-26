@@ -153,6 +153,8 @@ static void config__init_reload(struct mosquitto__config *config)
 	config->persistence_location = NULL;
 	mosquitto__free(config->persistence_file);
 	config->persistence_file = NULL;
+	mosquitto__free(config->persistence_plugin);
+	config->persistence_plugin = NULL;
 	config->persistent_client_expiration = 0;
 	mosquitto__free(config->psk_file);
 	config->psk_file = NULL;
@@ -235,6 +237,7 @@ void config__cleanup(struct mosquitto__config *config)
 	mosquitto__free(config->persistence_location);
 	mosquitto__free(config->persistence_file);
 	mosquitto__free(config->persistence_filepath);
+	mosquitto__free(config->persistence_plugin);
 	mosquitto__free(config->psk_file);
 	if(config->listeners){
 		for(i=0; i<config->listener_count; i++){
@@ -1536,6 +1539,8 @@ int config__read_file_core(struct mosquitto__config *config, bool reload, const 
 					if(conf__parse_string(&token, "persistence_file", &config->persistence_file, saveptr)) return MOSQ_ERR_INVAL;
 				}else if(!strcmp(token, "persistence_location")){
 					if(conf__parse_string(&token, "persistence_location", &config->persistence_location, saveptr)) return MOSQ_ERR_INVAL;
+				}else if(!strcmp(token, "persistence_plugin")){
+					if(conf__parse_string(&token, "persistence_plugin", &config->persistence_plugin, saveptr)) return MOSQ_ERR_INVAL;
 				}else if(!strcmp(token, "persistent_client_expiration")){
 					token = strtok_r(NULL, " ", &saveptr);
 					if(token){

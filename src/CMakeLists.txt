@@ -26,7 +26,8 @@ set (MOSQ_SRCS
 	net.c
 	../lib/net_mosq.c ../lib/net_mosq.h
 	../lib/packet_mosq.c ../lib/packet_mosq.h
-	persist.c persist.h
+	persist.c
+	persist_builtin.c persist_builtin.h
 	read_handle.c
 	../lib/read_handle.h
 	subs.c
