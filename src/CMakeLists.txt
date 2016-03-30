@@ -28,6 +28,7 @@ set (MOSQ_SRCS
 	../lib/packet_mosq.c ../lib/packet_mosq.h
 	persist.c
 	persist_builtin.c persist_builtin.h
+	persist_plugin.c persist_plugin.h
 	read_handle.c
 	../lib/read_handle.h
 	subs.c
@@ -145,6 +146,12 @@ if (UNIX)
 		set_target_properties(mosquitto PROPERTIES LINK_FLAGS "-Wl,-dynamic-list=${mosquitto_SOURCE_DIR}/src/linker.syms")
 	endif (APPLE)
 endif (UNIX)
+
+if (${WITH_PERSISTENCE} STREQUAL ON)
+	add_library(mosquitto_persist_sqlite SHARED persist_sqlite.c)
+	target_link_libraries(mosquitto_persist_sqlite sqlite3)
+	set_target_properties(mosquitto_persist_sqlite PROPERTIES PREFIX "")
+endif (${WITH_PERSISTENCE} STREQUAL ON)
 
 install(TARGETS mosquitto RUNTIME DESTINATION ${SBINDIR} LIBRARY DESTINATION ${LIBDIR})
 install(FILES mosquitto_plugin.h DESTINATION ${INCLUDEDIR})

@@ -23,6 +23,8 @@ Contributors:
 #define MOSQ_ACL_READ 0x01
 #define MOSQ_ACL_WRITE 0x02
 
+#include <stdbool.h>
+
 struct mosquitto_auth_opt {
 	char *key;
 	char *value;

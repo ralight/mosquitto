@@ -34,4 +34,5 @@ Contributors:
 #endif
 
 #define LIB_SYM_EASY(MEMBER, HANDLE, SYM) if(!(MEMBER = LIB_SYM(HANDLE, SYM)) return 1
+void LIB_ERROR(void);
 #endif

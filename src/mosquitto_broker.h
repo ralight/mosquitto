@@ -14,8 +14,8 @@ Contributors:
    Roger Light - initial implementation and documentation.
 */
 
-#ifndef MQTT3_H
-#define MQTT3_H
+#ifndef MOSQUITTO_BROKER_H
+#define MOSQUITTO_BROKER_H
 
 #include "config.h"
 #include <stdio.h>
@@ -41,6 +41,7 @@ Contributors:
 
 #include "mosquitto_internal.h"
 #include "mosquitto_plugin.h"
+#include "mosquitto_persist.h"
 #include "mosquitto.h"
 #include "tls_mosq.h"
 #include "uthash.h"
@@ -319,6 +320,14 @@ struct mosquitto__auth_plugin{
 	int (*psk_key_get)(void *user_data, const char *hint, const char *identity, char *key, int max_key_len);
 };
 
+struct mosquitto__persist_plugin{
+	void *lib;
+	void *userdata;
+	int (*plugin_version)(int);
+	int (*plugin_init)(void **userdata, struct mosquitto_plugin_opt *opts, int opt_count);
+	int (*plugin_cleanup)(void *userdata, struct mosquitto_plugin_opt *opts, int opt_count);
+};
+
 struct mosquitto_db{
 	dbid_t last_db_id;
 	struct mosquitto__subhier subs;
@@ -343,6 +352,7 @@ struct mosquitto_db{
 	int persistence_changes;
 	struct mosquitto__auth_plugin *auth_plugins;
 	int auth_plugin_count;
+	struct mosquitto__persist_plugin *persist_plugin;
 #ifdef WITH_SYS_TREE
 	int subscription_count;
 	int retained_count;
