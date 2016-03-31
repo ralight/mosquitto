@@ -53,6 +53,7 @@ Contributors:
 
 #include "mosquitto_broker.h"
 #include "memory_mosq.h"
+#include "persist_plugin.h"
 #include "util_mosq.h"
 
 struct sub__token {
@@ -87,6 +88,11 @@ static int subs__process(struct mosquitto_db *db, struct mosquitto__subhier *hie
 #endif
 		}
 		if(stored->payloadlen){
+#ifdef WITH_PERSISTENCE
+			if(strncmp(topic, "$SYS", 4)){
+				persist__msg_store_add(db, stored);
+			}
+#endif
 			hier->retained = stored;
 			hier->retained->ref_count++;
 #ifdef WITH_SYS_TREE

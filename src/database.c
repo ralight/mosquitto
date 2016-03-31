@@ -21,6 +21,7 @@ Contributors:
 
 #include "mosquitto_broker.h"
 #include "memory_mosq.h"
+#include "persist_plugin.h"
 #include "send_mosq.h"
 #include "sys_tree.h"
 #include "time_mosq.h"
@@ -157,6 +158,10 @@ void db__msg_store_add(struct mosquitto_db *db, struct mosquitto_msg_store *stor
 void db__msg_store_remove(struct mosquitto_db *db, struct mosquitto_msg_store *store)
 {
 	int i;
+
+	if(store->persisted){
+		persist__msg_store_delete(db, store);
+	}
 
 	if(store->prev){
 		store->prev->next = store->next;
@@ -558,6 +563,7 @@ int db__message_store(struct mosquitto_db *db, const char *source, uint16_t sour
 		goto error;
 	}
 
+	temp->persisted = false;
 	temp->topic = NULL;
 	temp->payload.ptr = NULL;
 

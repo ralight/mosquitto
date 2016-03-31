@@ -51,6 +51,7 @@ Contributors:
 
 #include "mosquitto_broker.h"
 #include "memory_mosq.h"
+#include "persist_plugin.h"
 #include "util_mosq.h"
 
 struct mosquitto_db int_db;
@@ -282,6 +283,9 @@ int main(int argc, char *argv[])
 		log__printf(NULL, MOSQ_LOG_INFO, "Using default config.");
 	}
 
+	rc = persist__plugin_init(&int_db);
+	if(rc) return rc;
+
 	rc = mosquitto_security_module_init(&int_db);
 	if(rc) return rc;
 	rc = mosquitto_security_init(&int_db, false);
@@ -428,6 +432,7 @@ int main(int argc, char *argv[])
 	}
 
 	mosquitto_security_module_cleanup(&int_db);
+	persist__plugin_cleanup(&int_db);
 
 	if(config.pid_file){
 		remove(config.pid_file);

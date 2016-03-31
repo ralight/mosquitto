@@ -268,6 +268,7 @@ struct mosquitto_msg_store{
 	uint16_t mid;
 	uint8_t qos;
 	bool retain;
+	bool persisted;
 };
 
 struct mosquitto_client_msg{
@@ -326,6 +327,8 @@ struct mosquitto__persist_plugin{
 	int (*plugin_version)(int);
 	int (*plugin_init)(void **userdata, struct mosquitto_plugin_opt *opts, int opt_count);
 	int (*plugin_cleanup)(void *userdata, struct mosquitto_plugin_opt *opts, int opt_count);
+	int (*msg_store_add)(void *userdata, uint64_t dbid, const char *source_id, int source_mid, int mid, const char *topic, int qos, int retained, int payloadlen, void *payload);
+	int (*msg_store_delete)(void *userdata, uint64_t dbid);
 };
 
 struct mosquitto_db{
