@@ -29,6 +29,7 @@ OBJS=	mosquitto.o \
 		memory_mosq.o \
 		persist.o \
 		persist_builtin.o \
+		persist_null.o \
 		persist_plugin.o \
 		net.o \
 		net_mosq.o \
@@ -126,6 +127,9 @@ persist.o : persist.c mosquitto_broker.h
 	${CROSS_COMPILE}${CC} $(BROKER_CFLAGS) -c $< -o $@
 
 persist_builtin.o : persist_builtin.c persist_builtin.h mosquitto_broker.h
+	${CROSS_COMPILE}${CC} $(BROKER_CFLAGS) -c $< -o $@
+
+persist_null.o : persist_null.c persist_null.h mosquitto_broker.h
 	${CROSS_COMPILE}${CC} $(BROKER_CFLAGS) -c $< -o $@
 
 persist_plugin.o : persist_plugin.c persist_plugin.h mosquitto_broker.h

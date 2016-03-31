@@ -20,6 +20,7 @@ Contributors:
 #include "memory_mosq.h"
 #include "mosquitto_broker.h"
 #include "mosquitto_persist.h"
+#include "persist_null.h"
 
 static void sym_error(void **lib, const char *func)
 {
@@ -36,25 +37,30 @@ int persist__plugin_init(struct mosquitto_db *db)
 	int version;
 	int rc;
 
-	db->persist_plugin = mosquitto__calloc(1, sizeof(struct mosquitto__persist_plugin));
-	if(!db->persist_plugin){
-		log__printf(NULL, MOSQ_LOG_ERR, "Error: Out of memory.");
-		return 1;
+	if(db->config->persistence_plugin == NULL){
+		db->persist_plugin.lib = NULL;
+		db->persist_plugin.userdata = NULL;
+		db->persist_plugin.plugin_version = persist__plugin_version_null;
+		db->persist_plugin.plugin_init = persist__plugin_init_null;
+		db->persist_plugin.plugin_cleanup = persist__plugin_cleanup_null;
+		db->persist_plugin.msg_store_add = persist__msg_store_add_null;
+		db->persist_plugin.msg_store_delete = persist__msg_store_delete_null;
+		db->persist_plugin.retain_add = persist__retain_add_null;
+		db->persist_plugin.retain_delete = persist__retain_delete_null;
+		return 0;
 	}
 
-	db->persist_plugin->lib = LIB_LOAD(db->config->persistence_plugin);
-	if(!db->persist_plugin->lib){
+	db->persist_plugin.lib = LIB_LOAD(db->config->persistence_plugin);
+	if(!db->persist_plugin.lib){
 		log__printf(NULL, MOSQ_LOG_ERR, "Unable to load %s.", db->config->persistence_plugin);
 		LIB_ERROR();
-		db->persist_plugin->lib = NULL;
-		mosquitto__free(db->persist_plugin);
+		db->persist_plugin.lib = NULL;
 		return 1;
 	}
 
-	plugin_version = LIB_SYM(db->persist_plugin->lib, "mosquitto_persist_plugin_version");
+	plugin_version = LIB_SYM(db->persist_plugin.lib, "mosquitto_persist_plugin_version");
 	if(!plugin_version){
-		sym_error(&db->persist_plugin->lib, "plugin_version");
-		mosquitto__free(db->persist_plugin);
+		sym_error(&db->persist_plugin.lib, "plugin_version");
 		return 1;
 	}
 
@@ -64,67 +70,54 @@ int persist__plugin_init(struct mosquitto_db *db)
 				"Error: Incorrect persistence plugin version (got %d, expected %d).",
 				version, MOSQ_PERSIST_PLUGIN_VERSION);
 
-		LIB_CLOSE(db->persist_plugin->lib);
-		db->persist_plugin->lib = NULL;
-		mosquitto__free(db->persist_plugin);
+		LIB_CLOSE(db->persist_plugin.lib);
+		db->persist_plugin.lib = NULL;
 		return 1;
 	}
 
-	db->persist_plugin->plugin_init = LIB_SYM(db->persist_plugin->lib, "mosquitto_persist_plugin_init");
-	if(!db->persist_plugin->plugin_init){
-		sym_error(&db->persist_plugin->lib, "plugin_init");
-		mosquitto__free(db->persist_plugin);
+	db->persist_plugin.plugin_init = LIB_SYM(db->persist_plugin.lib, "mosquitto_persist_plugin_init");
+	if(!db->persist_plugin.plugin_init){
+		sym_error(&db->persist_plugin.lib, "plugin_init");
 		return 1;
 	}
 
-	db->persist_plugin->plugin_cleanup = LIB_SYM(db->persist_plugin->lib, "mosquitto_persist_plugin_cleanup");
-	if(!db->persist_plugin->plugin_cleanup){
-		sym_error(&db->persist_plugin->lib, "plugin_cleanup");
-		mosquitto__free(db->persist_plugin);
-		db->persist_plugin = NULL;
+	db->persist_plugin.plugin_cleanup = LIB_SYM(db->persist_plugin.lib, "mosquitto_persist_plugin_cleanup");
+	if(!db->persist_plugin.plugin_cleanup){
+		sym_error(&db->persist_plugin.lib, "plugin_cleanup");
 		return 1;
 	}
 
-	db->persist_plugin->msg_store_add = LIB_SYM(db->persist_plugin->lib, "mosquitto_persist_msg_store_add");
-	if(!db->persist_plugin->msg_store_add){
-		sym_error(&db->persist_plugin->lib, "msg_store_add");
-		mosquitto__free(db->persist_plugin);
-		db->persist_plugin = NULL;
+	db->persist_plugin.msg_store_add = LIB_SYM(db->persist_plugin.lib, "mosquitto_persist_msg_store_add");
+	if(!db->persist_plugin.msg_store_add){
+		sym_error(&db->persist_plugin.lib, "msg_store_add");
 		return 1;
 	}
 
-	db->persist_plugin->msg_store_delete = LIB_SYM(db->persist_plugin->lib, "mosquitto_persist_msg_store_delete");
-	if(!db->persist_plugin->msg_store_delete){
-		sym_error(&db->persist_plugin->lib, "msg_store_delete");
-		mosquitto__free(db->persist_plugin);
-		db->persist_plugin = NULL;
+	db->persist_plugin.msg_store_delete = LIB_SYM(db->persist_plugin.lib, "mosquitto_persist_msg_store_delete");
+	if(!db->persist_plugin.msg_store_delete){
+		sym_error(&db->persist_plugin.lib, "msg_store_delete");
 		return 1;
 	}
 
-	db->persist_plugin->retain_add = LIB_SYM(db->persist_plugin->lib, "mosquitto_persist_retain_add");
-	if(!db->persist_plugin->retain_add){
-		sym_error(&db->persist_plugin->lib, "retain_add");
-		mosquitto__free(db->persist_plugin);
-		db->persist_plugin = NULL;
+	db->persist_plugin.retain_add = LIB_SYM(db->persist_plugin.lib, "mosquitto_persist_retain_add");
+	if(!db->persist_plugin.retain_add){
+		sym_error(&db->persist_plugin.lib, "retain_add");
 		return 1;
 	}
 
-	db->persist_plugin->retain_delete = LIB_SYM(db->persist_plugin->lib, "mosquitto_persist_retain_delete");
-	if(!db->persist_plugin->retain_delete){
-		sym_error(&db->persist_plugin->lib, "retain_delete");
-		mosquitto__free(db->persist_plugin);
-		db->persist_plugin = NULL;
+	db->persist_plugin.retain_delete = LIB_SYM(db->persist_plugin.lib, "mosquitto_persist_retain_delete");
+	if(!db->persist_plugin.retain_delete){
+		sym_error(&db->persist_plugin.lib, "retain_delete");
 		return 1;
 	}
 
 
 	/* Initialise plugin */
-	rc = db->persist_plugin->plugin_init(&db->persist_plugin->userdata, NULL, 0); /* FIXME - options */
+	rc = db->persist_plugin.plugin_init(&db->persist_plugin.userdata, NULL, 0); /* FIXME - options */
 	if(rc){
 		log__printf(NULL, MOSQ_LOG_ERR, "Error: Persistence plugin initialisation returned error code %d.", rc);
-		LIB_CLOSE(db->persist_plugin->lib);
-		db->persist_plugin->lib = NULL;
-		mosquitto__free(db->persist_plugin);
+		LIB_CLOSE(db->persist_plugin.lib);
+		db->persist_plugin.lib = NULL;
 		return 1;
 	}
 
@@ -135,18 +128,25 @@ int persist__plugin_cleanup(struct mosquitto_db *db)
 {
 	int rc = 0;
 
-	if(db->persist_plugin->lib){
-		if(db->persist_plugin->plugin_cleanup){
-			rc = db->persist_plugin->plugin_cleanup(db->persist_plugin->userdata, NULL, 0); /* FIXME - options */
+	if(db->persist_plugin.lib){
+		if(db->persist_plugin.plugin_cleanup){
+			rc = db->persist_plugin.plugin_cleanup(db->persist_plugin.userdata, NULL, 0); /* FIXME - options */
 			if(rc){
 				log__printf(NULL, MOSQ_LOG_ERR, "Error: Persistence plugin cleanup returned error code %d.", rc);
 			}
 		}
-		LIB_CLOSE(db->persist_plugin->lib);
-		db->persist_plugin->lib = NULL;
-		mosquitto__free(db->persist_plugin);
-		db->persist_plugin = NULL;
+		LIB_CLOSE(db->persist_plugin.lib);
+		db->persist_plugin.lib = NULL;
 	}
+
+	db->persist_plugin.userdata = NULL;
+	db->persist_plugin.plugin_version = persist__plugin_version_null;
+	db->persist_plugin.plugin_init = persist__plugin_init_null;
+	db->persist_plugin.plugin_cleanup = persist__plugin_cleanup_null;
+	db->persist_plugin.msg_store_add = persist__msg_store_add_null;
+	db->persist_plugin.msg_store_delete = persist__msg_store_delete_null;
+	db->persist_plugin.retain_add = persist__retain_add_null;
+	db->persist_plugin.retain_delete = persist__retain_delete_null;
 
 	return rc;
 }
@@ -161,25 +161,21 @@ int persist__msg_store_add(struct mosquitto_db *db, struct mosquitto_msg_store *
 
 	if(msg->persisted) return 0;
 
-	if(db->persist_plugin && db->persist_plugin->msg_store_add){
-		rc = db->persist_plugin->msg_store_add(
-				db->persist_plugin->userdata,
-				msg->db_id,
-				msg->source_id,
-				msg->source_mid,
-				msg->mid,
-				msg->topic,
-				msg->qos,
-				msg->retain,
-				msg->payloadlen,
-				UHPA_ACCESS_PAYLOAD(msg));
-		if(!rc){
-			msg->persisted = true;
-		}
-		return rc;
+	rc = db->persist_plugin.msg_store_add(
+			db->persist_plugin.userdata,
+			msg->db_id,
+			msg->source_id,
+			msg->source_mid,
+			msg->mid,
+			msg->topic,
+			msg->qos,
+			msg->retain,
+			msg->payloadlen,
+			UHPA_ACCESS_PAYLOAD(msg));
+	if(!rc){
+		msg->persisted = true;
 	}
-
-	return 0;
+	return rc;
 }
 
 int persist__msg_store_delete(struct mosquitto_db *db, struct mosquitto_msg_store *msg)
@@ -188,16 +184,12 @@ int persist__msg_store_delete(struct mosquitto_db *db, struct mosquitto_msg_stor
 
 	if(!msg->persisted) return 0;
 
-	if(db->persist_plugin && db->persist_plugin->msg_store_delete){
-		rc = db->persist_plugin->msg_store_delete(
-				db->persist_plugin->userdata, msg->db_id);
-		if(!rc){
-			msg->persisted = false;
-		}
-		return rc;
+	rc = db->persist_plugin.msg_store_delete(
+			db->persist_plugin.userdata, msg->db_id);
+	if(!rc){
+		msg->persisted = false;
 	}
-
-	return 0;
+	return rc;
 }
 
 
@@ -209,24 +201,16 @@ int persist__retain_add(struct mosquitto_db *db, uint64_t store_id)
 {
 	int rc;
 
-	if(db->persist_plugin && db->persist_plugin->retain_add){
-		rc = db->persist_plugin->retain_add(
-				db->persist_plugin->userdata, store_id);
-		return rc;
-	}
-
-	return 0;
+	rc = db->persist_plugin.retain_add(
+			db->persist_plugin.userdata, store_id);
+	return rc;
 }
 
 int persist__retain_delete(struct mosquitto_db *db, uint64_t store_id)
 {
 	int rc;
 
-	if(db->persist_plugin && db->persist_plugin->retain_delete){
-		rc = db->persist_plugin->retain_delete(
-				db->persist_plugin->userdata, store_id);
-		return rc;
-	}
-
-	return 0;
+	rc = db->persist_plugin.retain_delete(
+			db->persist_plugin.userdata, store_id);
+	return rc;
 }

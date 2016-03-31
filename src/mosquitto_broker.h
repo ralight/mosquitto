@@ -327,7 +327,7 @@ struct mosquitto__persist_plugin{
 	int (*plugin_version)(int);
 	int (*plugin_init)(void **userdata, struct mosquitto_plugin_opt *opts, int opt_count);
 	int (*plugin_cleanup)(void *userdata, struct mosquitto_plugin_opt *opts, int opt_count);
-	int (*msg_store_add)(void *userdata, uint64_t dbid, const char *source_id, int source_mid, int mid, const char *topic, int qos, int retained, int payloadlen, void *payload);
+	int (*msg_store_add)(void *userdata, uint64_t dbid, const char *source_id, int source_mid, int mid, const char *topic, int qos, int retained, int payloadlen, const void *payload);
 	int (*msg_store_delete)(void *userdata, uint64_t dbid);
 	int (*retain_add)(void *userdata, uint64_t store_id);
 	int (*retain_delete)(void *userdata, uint64_t store_id);
@@ -357,7 +357,7 @@ struct mosquitto_db{
 	int persistence_changes;
 	struct mosquitto__auth_plugin *auth_plugins;
 	int auth_plugin_count;
-	struct mosquitto__persist_plugin *persist_plugin;
+	struct mosquitto__persist_plugin persist_plugin;
 #ifdef WITH_SYS_TREE
 	int subscription_count;
 	int retained_count;
