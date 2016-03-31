@@ -82,6 +82,9 @@ static int subs__process(struct mosquitto_db *db, struct mosquitto__subhier *hie
 		}
 #endif
 		if(hier->retained){
+#ifdef WITH_PERSISTENCE
+			/* FIXME */ persist__retain_delete(db, hier->retained->db_id);
+#endif
 			db__msg_store_deref(db, &hier->retained);
 #ifdef WITH_SYS_TREE
 			db->retained_count--;
@@ -90,7 +93,10 @@ static int subs__process(struct mosquitto_db *db, struct mosquitto__subhier *hie
 		if(stored->payloadlen){
 #ifdef WITH_PERSISTENCE
 			if(strncmp(topic, "$SYS", 4)){
-				persist__msg_store_add(db, stored);
+#ifdef WITH_PERSISTENCE
+				/* FIXME */ persist__msg_store_add(db, stored);
+				/* FIXME */ persist__retain_add(db, stored->db_id);
+#endif
 			}
 #endif
 			hier->retained = stored;

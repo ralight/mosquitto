@@ -14,11 +14,54 @@ struct mosquitto_sqlite {
 	sqlite3 *db;
 	sqlite3_stmt *msg_store_insert_stmt;
 	sqlite3_stmt *msg_store_delete_stmt;
+	sqlite3_stmt *retain_insert_stmt;
+	sqlite3_stmt *retain_delete_stmt;
 };
 
 int mosquitto_persist_plugin_version(void)
 {
 	return MOSQ_PERSIST_PLUGIN_VERSION;
+}
+
+static int create_tables(struct mosquitto_sqlite *ud)
+{
+	int rc;
+
+	rc = sqlite3_exec(ud->db,
+			"CREATE TABLE IF NOT EXISTS msg_store "
+			"("
+				"dbid INTEGER PRIMARY KEY,"
+				"source_id TEXT,"
+				"source_mid INTEGER,"
+				"mid INTEGER,"
+				"topic TEXT,"
+				"qos INTEGER,"
+				"retained INTEGER,"
+				"payloadlen INTEGER,"
+				"payload BLOB"
+			");",
+			NULL, NULL, NULL);
+	if(rc){
+		mosquitto_log_printf(MOSQ_LOG_ERR, "Error in mosquitto_persist_plugin_init for sqlite plugin."); /* FIXME - print sqlite error */
+		mosquitto_log_printf(MOSQ_LOG_ERR, "%s", sqlite3_errstr(rc));
+		sqlite3_close(ud->db);
+		return 1;
+	}
+
+	rc = sqlite3_exec(ud->db,
+			"CREATE TABLE IF NOT EXISTS retained_msgs "
+			"("
+				"store_id INTEGER PRIMARY KEY"
+			");",
+			NULL, NULL, NULL);
+	if(rc){
+		mosquitto_log_printf(MOSQ_LOG_ERR, "Error in mosquitto_persist_plugin_init for sqlite plugin."); /* FIXME - print sqlite error */
+		mosquitto_log_printf(MOSQ_LOG_ERR, "%s", sqlite3_errstr(rc));
+		sqlite3_close(ud->db);
+		return 1;
+	}
+
+	return 0;
 }
 
 int mosquitto_persist_plugin_init(void **userdata, struct mosquitto_plugin_opt *opts, int opt_count)
@@ -34,23 +77,8 @@ int mosquitto_persist_plugin_init(void **userdata, struct mosquitto_plugin_opt *
 	if(sqlite3_open_v2("mosquitto.sqlite3", &ud->db, SQLITE_OPEN_READWRITE|SQLITE_OPEN_CREATE, NULL) != SQLITE_OK){
 		/* FIXME - handle error - use options for file */
 	}else{
-		rc = sqlite3_exec(ud->db,
-				"CREATE TABLE IF NOT EXISTS msg_store "
-				"("
-					"dbid INTEGER PRIMARY KEY,"
-					"source_id TEXT,"
-					"source_mid INTEGER,"
-					"mid INTEGER,"
-					"topic TEXT,"
-					"qos INTEGER,"
-					"retained INTEGER,"
-					"payloadlen INTEGER,"
-					"payload BLOB"
-				");",
-				NULL, NULL, NULL);
+		rc = create_tables(ud);
 		if(rc){
-			mosquitto_log_printf(MOSQ_LOG_ERR, "Error in mosquitto_persist_plugin_init for sqlite plugin."); /* FIXME - print sqlite error */
-			sqlite3_close(ud->db);
 			return 1;
 		}
 	}
@@ -63,6 +91,12 @@ int mosquitto_persist_plugin_init(void **userdata, struct mosquitto_plugin_opt *
 	rc = sqlite3_prepare_v2(ud->db,
 			"DELETE FROM msg_store WHERE dbid=?",
 			-1, &ud->msg_store_delete_stmt, NULL);
+	rc = sqlite3_prepare_v2(ud->db,
+			"INSERT INTO retained_msgs (store_id) VALUES(?)",
+			-1, &ud->retain_insert_stmt, NULL);
+	rc = sqlite3_prepare_v2(ud->db,
+			"DELETE FROM retained_msgs WHERE store_id=?",
+			-1, &ud->retain_delete_stmt, NULL);
 
 	*userdata = ud;
 	return 0;
@@ -147,6 +181,7 @@ cleanup:
 	return rc;
 }
 
+
 int mosquitto_persist_msg_store_delete(void *userdata, uint64_t dbid)
 {
 	struct mosquitto_sqlite *ud = (struct mosquitto_sqlite *)userdata;
@@ -164,5 +199,40 @@ int mosquitto_persist_msg_store_delete(void *userdata, uint64_t dbid)
 	sqlite3_reset(ud->msg_store_delete_stmt);
 	sqlite3_clear_bindings(ud->msg_store_delete_stmt);
 	return rc;
+}
+
+
+/* ==================================================
+ * Retained messages
+ * ================================================== */
+static int sqlite__persist_retain(sqlite3_stmt *stmt, uint64_t store_id)
+{
+	int rc = 1;
+
+	if(sqlite3_bind_int64(stmt, 1, store_id) == SQLITE_OK){
+		if(sqlite3_step(stmt) == SQLITE_DONE){
+			rc = 0;
+		}
+	}
+	sqlite3_reset(stmt);
+	sqlite3_clear_bindings(stmt);
+
+	return rc;
+}
+
+
+int mosquitto_persist_retain_add(void *userdata, uint64_t store_id)
+{
+	struct mosquitto_sqlite *ud = (struct mosquitto_sqlite *)userdata;
+
+	return sqlite__persist_retain(ud->retain_insert_stmt, store_id);
+}
+
+
+int mosquitto_persist_retain_delete(void *userdata, uint64_t store_id)
+{
+	struct mosquitto_sqlite *ud = (struct mosquitto_sqlite *)userdata;
+
+	return sqlite__persist_retain(ud->retain_delete_stmt, store_id);
 }
 

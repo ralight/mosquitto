@@ -85,6 +85,22 @@ int persist__plugin_init(struct mosquitto_db *db)
 		return 1;
 	}
 
+	db->persist_plugin->retain_add = LIB_SYM(db->persist_plugin->lib, "mosquitto_persist_retain_add");
+	if(!db->persist_plugin->retain_add){
+		sym_error(&db->persist_plugin->lib, "retain_add");
+		mosquitto__free(db->persist_plugin);
+		db->persist_plugin = NULL;
+		return 1;
+	}
+
+	db->persist_plugin->retain_delete = LIB_SYM(db->persist_plugin->lib, "mosquitto_persist_retain_delete");
+	if(!db->persist_plugin->retain_delete){
+		sym_error(&db->persist_plugin->lib, "retain_delete");
+		mosquitto__free(db->persist_plugin);
+		db->persist_plugin = NULL;
+		return 1;
+	}
+
 
 	/* Initialise plugin */
 	rc = db->persist_plugin->plugin_init(&db->persist_plugin->userdata, NULL, 0); /* FIXME - options */
@@ -120,6 +136,9 @@ int persist__plugin_cleanup(struct mosquitto_db *db)
 }
 
 
+/* ==================================================
+ * Message store
+ * ================================================== */
 int persist__msg_store_add(struct mosquitto_db *db, struct mosquitto_msg_store *msg)
 {
 	int rc;
@@ -165,3 +184,33 @@ int persist__msg_store_delete(struct mosquitto_db *db, struct mosquitto_msg_stor
 	return 0;
 }
 
+
+/* ==================================================
+ * Retained messages
+ * ================================================== */
+
+int persist__retain_add(struct mosquitto_db *db, uint64_t store_id)
+{
+	int rc;
+
+	if(db->persist_plugin && db->persist_plugin->retain_add){
+		rc = db->persist_plugin->retain_add(
+				db->persist_plugin->userdata, store_id);
+		return rc;
+	}
+
+	return 0;
+}
+
+int persist__retain_delete(struct mosquitto_db *db, uint64_t store_id)
+{
+	int rc;
+
+	if(db->persist_plugin && db->persist_plugin->retain_delete){
+		rc = db->persist_plugin->retain_delete(
+				db->persist_plugin->userdata, store_id);
+		return rc;
+	}
+
+	return 0;
+}
