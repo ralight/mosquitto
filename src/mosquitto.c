@@ -267,6 +267,9 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	rc = persist__plugin_init(&int_db);
+	if(rc) return rc;
+
 	rc = db__open(&config, &int_db);
 	if(rc != MOSQ_ERR_SUCCESS){
 		log__printf(NULL, MOSQ_LOG_ERR, "Error: Couldn't open database.");
@@ -282,9 +285,6 @@ int main(int argc, char *argv[])
 	}else{
 		log__printf(NULL, MOSQ_LOG_INFO, "Using default config.");
 	}
-
-	rc = persist__plugin_init(&int_db);
-	if(rc) return rc;
 
 	rc = mosquitto_security_module_init(&int_db);
 	if(rc) return rc;
@@ -382,6 +382,7 @@ int main(int argc, char *argv[])
 #ifdef WITH_PERSISTENCE
 	if(config.persistence){
 		persist__backup(&int_db, true);
+		persist__plugin_cleanup(&int_db);
 	}
 #endif
 
@@ -432,7 +433,6 @@ int main(int argc, char *argv[])
 	}
 
 	mosquitto_security_module_cleanup(&int_db);
-	persist__plugin_cleanup(&int_db);
 
 	if(config.pid_file){
 		remove(config.pid_file);

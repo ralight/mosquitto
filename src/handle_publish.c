@@ -188,10 +188,10 @@ int handle__publish(struct mosquitto_db *db, struct mosquitto *context)
 
 	switch(qos){
 		case 0:
-			if(sub__messages_queue(db, context->id, topic, qos, retain, &stored)) rc = 1;
+			if(sub__messages_queue(db, context->id, topic, qos, retain, &stored, true)) rc = 1;
 			break;
 		case 1:
-			if(sub__messages_queue(db, context->id, topic, qos, retain, &stored)) rc = 1;
+			if(sub__messages_queue(db, context->id, topic, qos, retain, &stored, true)) rc = 1;
 			if(send__puback(context, mid)) rc = 1;
 			break;
 		case 2:

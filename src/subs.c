@@ -62,7 +62,7 @@ struct sub__token {
 	uint16_t topic_len;
 };
 
-static int subs__process(struct mosquitto_db *db, struct mosquitto__subhier *hier, const char *source_id, const char *topic, int qos, int retain, struct mosquitto_msg_store *stored, bool set_retain)
+static int subs__process(struct mosquitto_db *db, struct mosquitto__subhier *hier, const char *source_id, const char *topic, int qos, int retain, struct mosquitto_msg_store *stored, bool set_retain, bool persist)
 {
 	int rc = 0;
 	int rc2;
@@ -83,7 +83,9 @@ static int subs__process(struct mosquitto_db *db, struct mosquitto__subhier *hie
 #endif
 		if(hier->retained){
 #ifdef WITH_PERSISTENCE
-			/* FIXME */ persist__retain_delete(db, hier->retained->db_id);
+			if(persist){
+				/* FIXME */ persist__retain_delete(db, hier->retained->db_id);
+			}
 #endif
 			db__msg_store_deref(db, &hier->retained);
 #ifdef WITH_SYS_TREE
@@ -94,8 +96,10 @@ static int subs__process(struct mosquitto_db *db, struct mosquitto__subhier *hie
 #ifdef WITH_PERSISTENCE
 			if(strncmp(topic, "$SYS", 4)){
 #ifdef WITH_PERSISTENCE
-				/* FIXME */ persist__msg_store_add(db, stored);
-				/* FIXME */ persist__retain_add(db, stored->db_id);
+				if(persist){
+					/* FIXME */ persist__msg_store_add(db, stored);
+					/* FIXME */ persist__retain_add(db, stored->db_id);
+				}
 #endif
 			}
 #endif
@@ -408,7 +412,7 @@ static int sub__remove_recurse(struct mosquitto_db *db, struct mosquitto *contex
 	return MOSQ_ERR_SUCCESS;
 }
 
-static void sub__search(struct mosquitto_db *db, struct mosquitto__subhier *subhier, struct sub__token *tokens, const char *source_id, const char *topic, int qos, int retain, struct mosquitto_msg_store *stored, bool set_retain)
+static void sub__search(struct mosquitto_db *db, struct mosquitto__subhier *subhier, struct sub__token *tokens, const char *source_id, const char *topic, int qos, int retain, struct mosquitto_msg_store *stored, bool set_retain, bool persist)
 {
 	/* FIXME - need to take into account source_id if the client is a bridge */
 	struct mosquitto__subhier *branch;
@@ -427,16 +431,16 @@ static void sub__search(struct mosquitto_db *db, struct mosquitto__subhier *subh
 				/* Don't set a retained message where + is in the hierarchy. */
 				sr = false;
 			}
-			sub__search(db, branch, tokens->next, source_id, topic, qos, retain, stored, sr);
+			sub__search(db, branch, tokens->next, source_id, topic, qos, retain, stored, sr, persist);
 			if(!tokens->next){
-				subs__process(db, branch, source_id, topic, qos, retain, stored, sr);
+				subs__process(db, branch, source_id, topic, qos, retain, stored, sr, persist);
 			}
 		}else if(!strcmp(UHPA_ACCESS_TOPIC(branch), "#") && !branch->children){
 			/* The topic matches due to a # wildcard - process the
 			 * subscriptions but *don't* return. Although this branch has ended
 			 * there may still be other subscriptions to deal with.
 			 */
-			subs__process(db, branch, source_id, topic, qos, retain, stored, false);
+			subs__process(db, branch, source_id, topic, qos, retain, stored, false, persist);
 		}
 		branch = branch->next;
 	}
@@ -522,7 +526,7 @@ int sub__remove(struct mosquitto_db *db, struct mosquitto *context, const char *
 	return rc;
 }
 
-int sub__messages_queue(struct mosquitto_db *db, const char *source_id, const char *topic, int qos, int retain, struct mosquitto_msg_store **stored)
+int sub__messages_queue(struct mosquitto_db *db, const char *source_id, const char *topic, int qos, int retain, struct mosquitto_msg_store **stored, bool persist)
 {
 	int rc = 0;
 	struct mosquitto__subhier *subhier;
@@ -548,7 +552,7 @@ int sub__messages_queue(struct mosquitto_db *db, const char *source_id, const ch
 				 */
 				sub__add_recurse(db, NULL, 0, subhier, tokens);
 			}
-			sub__search(db, subhier, tokens, source_id, topic, qos, retain, *stored, true);
+			sub__search(db, subhier, tokens, source_id, topic, qos, retain, *stored, true, persist);
 		}
 		subhier = subhier->next;
 	}

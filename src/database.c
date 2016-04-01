@@ -104,7 +104,11 @@ int db__open(struct mosquitto__config *config, struct mosquitto_db *db)
 
 #ifdef WITH_PERSISTENCE
 	if(config->persistence && config->persistence_filepath){
-		if(persist__restore(db)) return 1;
+		if(config->persistence_plugin){
+			if(persist__plugin_restore(db)) return 1;
+		}else{
+			if(persist__restore(db)) return 1;
+		}
 	}
 #endif
 
@@ -544,7 +548,7 @@ int db__messages_easy_queue(struct mosquitto_db *db, struct mosquitto *context, 
 	}
 	if(db__message_store(db, source_id, 0, topic_heap, qos, payloadlen, &payload_uhpa, retain, &stored, 0)) return 1;
 
-	return sub__messages_queue(db, source_id, topic_heap, qos, retain, &stored);
+	return sub__messages_queue(db, source_id, topic_heap, qos, retain, &stored, true);
 }
 
 /* This function requires topic to be allocated on the heap. Once called, it owns topic and will free it on error. Likewise payload. */
@@ -762,7 +766,7 @@ int db__message_release(struct mosquitto_db *db, struct mosquitto *context, uint
 			 * denied/dropped and is being processed so the client doesn't
 			 * keep resending it. That means we don't send it to other
 			 * clients. */
-			if(!topic || !sub__messages_queue(db, source_id, topic, qos, retain, &tail->store)){
+			if(!topic || !sub__messages_queue(db, source_id, topic, qos, retain, &tail->store, true)){
 				db__message_remove(db, context, &tail, last);
 				deleted = true;
 			}else{

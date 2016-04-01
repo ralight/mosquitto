@@ -23,6 +23,9 @@ Contributors:
 int persist__plugin_init(struct mosquitto_db *db);
 int persist__plugin_cleanup(struct mosquitto_db *db);
 
+int persist__plugin_backup(struct mosquitto_db *db);
+int persist__plugin_restore(struct mosquitto_db *db);
+
 int persist__msg_store_add(struct mosquitto_db *db, struct mosquitto_msg_store *msg);
 int persist__msg_store_delete(struct mosquitto_db *db, struct mosquitto_msg_store *msg);
 

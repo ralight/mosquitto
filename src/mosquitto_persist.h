@@ -16,4 +16,11 @@ int mosquitto_persist_plugin_version(void);
 int mosquitto_persist_plugin_init(void **userdata, struct mosquitto_plugin_opt *opts, int opt_count);
 int mosquitto_persist_plugin_cleanup(void *userdata, struct mosquitto_plugin_opt *opts, int opt_count);
 
+
+int mosquitto_persist_msg_store_load(
+		uint64_t dbid, const char *source_id, int source_mid,
+		int mid, const char *topic, int qos, int retained,
+		int payloadlen, const void *payload);
+
+int mosquitto_persist_retain_load(uint64_t store_id);
 #endif

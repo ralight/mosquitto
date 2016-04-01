@@ -25,11 +25,16 @@ Contributors:
 #include "mosquitto.h"
 
 int persist__plugin_version_null(void);
+
 int persist__plugin_init_null(void **userdata, struct mosquitto_plugin_opt *opts, int opt_count);
 int persist__plugin_cleanup_null(void *userdata, struct mosquitto_plugin_opt *opts, int opt_count);
+
 int persist__msg_store_add_null(void *userdata, uint64_t dbid, const char *source_id, int source_mid, int mid, const char *topic, int qos, int retained, int payloadlen, const void *payload);
 int persist__msg_store_delete_null(void *userdata, uint64_t dbid);
+int persist__msg_store_restore_null(void *userdata);
+
 int persist__retain_add_null(void *userdata, uint64_t store_id);
 int persist__retain_delete_null(void *userdata, uint64_t store_id);
+int persist__retain_restore_null(void *userdata);
 
 #endif

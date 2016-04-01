@@ -46,6 +46,11 @@ int persist__msg_store_delete_null(void *userdata, uint64_t dbid)
 	return 0;
 }
 
+int persist__msg_store_restore_null(void *userdata)
+{
+	return 0;
+}
+
 int persist__retain_add_null(void *userdata, uint64_t store_id)
 {
 	return 0;
@@ -53,6 +58,11 @@ int persist__retain_add_null(void *userdata, uint64_t store_id)
 
 
 int persist__retain_delete_null(void *userdata, uint64_t store_id)
+{
+	return 0;
+}
+
+int persist__retain_restore_null(void *userdata)
 {
 	return 0;
 }

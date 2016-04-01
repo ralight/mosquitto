@@ -324,13 +324,15 @@ struct mosquitto__auth_plugin{
 struct mosquitto__persist_plugin{
 	void *lib;
 	void *userdata;
-	int (*plugin_version)(int);
+	int (*plugin_version)(void);
 	int (*plugin_init)(void **userdata, struct mosquitto_plugin_opt *opts, int opt_count);
 	int (*plugin_cleanup)(void *userdata, struct mosquitto_plugin_opt *opts, int opt_count);
 	int (*msg_store_add)(void *userdata, uint64_t dbid, const char *source_id, int source_mid, int mid, const char *topic, int qos, int retained, int payloadlen, const void *payload);
 	int (*msg_store_delete)(void *userdata, uint64_t dbid);
+	int (*msg_store_restore)(void *userdata);
 	int (*retain_add)(void *userdata, uint64_t store_id);
 	int (*retain_delete)(void *userdata, uint64_t store_id);
+	int (*retain_restore)(void *userdata);
 };
 
 struct mosquitto_db{
@@ -535,7 +537,7 @@ int sub__remove(struct mosquitto_db *db, struct mosquitto *context, const char *
 void sub__tree_print(struct mosquitto__subhier *root, int level);
 int sub__clean_session(struct mosquitto_db *db, struct mosquitto *context);
 int sub__retain_queue(struct mosquitto_db *db, struct mosquitto *context, const char *sub, int sub_qos);
-int sub__messages_queue(struct mosquitto_db *db, const char *source_id, const char *topic, int qos, int retain, struct mosquitto_msg_store **stored);
+int sub__messages_queue(struct mosquitto_db *db, const char *source_id, const char *topic, int qos, int retain, struct mosquitto_msg_store **stored, bool persist);
 
 /* ============================================================
  * Context functions
