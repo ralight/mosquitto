@@ -22,16 +22,7 @@ Contributors:
 #include "mosquitto_broker.h"
 #include "memory_mosq.h"
 #include "packet_mosq.h"
-/*
-
-#include "mosquitto_broker.h"
-#include "mqtt3_protocol.h"
-#include "send_mosq.h"
-#include "sys_tree.h"
-#include "time_mosq.h"
-#include "tls_mosq.h"
-#include "util_mosq.h"
-*/
+#include "persist_plugin.h"
 
 
 
@@ -139,6 +130,15 @@ int handle__subscribe(struct mosquitto_db *db, struct mosquitto *context)
 #endif
 
 			if(qos != 0x80){
+#ifdef WITH_PERSISTENCE
+				if(!context->clean_session){
+					rc2 = persist__sub_add(db, context->id, sub, qos);
+					if(rc2){
+						rc = rc2;
+						/* FIXME */
+					}
+				}
+#endif
 				rc2 = sub__add(db, context, sub, qos, &db->subs);
 				if(rc2 == MOSQ_ERR_SUCCESS){
 					if(sub__retain_queue(db, context, sub, qos)) rc = 1;

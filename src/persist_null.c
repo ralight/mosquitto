@@ -83,3 +83,24 @@ int persist__client_restore_null(void *userdata)
 	return 0;
 }
 
+
+int persist__sub_add_null(void *userdata, const char *client_id, const char *topic, int qos)
+{
+	return 0;
+}
+
+int persist__sub_delete_null(void *userdata, const char *client_id, const char *topic)
+{
+	return 0;
+}
+
+int persist__sub_update_null(void *userdata, const char *client_id, const char *topic, int qos)
+{
+	return 0;
+}
+
+int persist__sub_restore_null(void *userdata)
+{
+	return 0;
+}
+

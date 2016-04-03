@@ -35,6 +35,10 @@ struct mosquitto_sqlite {
 	sqlite3_stmt *retain_delete_stmt;
 	sqlite3_stmt *client_insert_stmt;
 	sqlite3_stmt *client_delete_stmt;
+	sqlite3_stmt *sub_insert_stmt;
+	sqlite3_stmt *sub_delete_stmt;
+	sqlite3_stmt *sub_select_stmt;
+	sqlite3_stmt *sub_update_stmt;
 };
 
 int mosquitto_persist_plugin_version(void)
@@ -53,7 +57,7 @@ static int create_tables(struct mosquitto_sqlite *ud)
 				"source_id TEXT,"
 				"source_mid INTEGER,"
 				"mid INTEGER,"
-				"topic TEXT,"
+				"topic TEXT NOT NULL,"
 				"qos INTEGER,"
 				"retained INTEGER,"
 				"payloadlen INTEGER,"
@@ -78,6 +82,17 @@ static int create_tables(struct mosquitto_sqlite *ud)
 				"client_id TEXT PRIMARY KEY,"
 				"last_mid INTEGER,"
 				"disconnect_t INTEGER"
+			");",
+			NULL, NULL, NULL);
+	if(rc) goto error;
+
+
+	rc = sqlite3_exec(ud->db,
+			"CREATE TABLE IF NOT EXISTS subscriptions "
+			"("
+				"client_id TEXT NOT NULL,"
+				"topic TEXT NOT NULL,"
+				"qos INTEGER"
 			");",
 			NULL, NULL, NULL);
 	if(rc) goto error;
@@ -133,6 +148,18 @@ int mosquitto_persist_plugin_init(void **userdata, struct mosquitto_plugin_opt *
 	rc = sqlite3_prepare_v2(ud->db,
 			"DELETE FROM clients WHERE client_id=?",
 			-1, &ud->client_delete_stmt, NULL);
+	rc = sqlite3_prepare_v2(ud->db,
+			"INSERT INTO subscriptions (client_id, topic, qos) VALUES(?,?,?)",
+			-1, &ud->sub_insert_stmt, NULL);
+	rc = sqlite3_prepare_v2(ud->db,
+			"DELETE FROM subscriptions WHERE client_id=? AND topic=?",
+			-1, &ud->sub_delete_stmt, NULL);
+	rc = sqlite3_prepare_v2(ud->db,
+			"SELECT * FROM subscriptions WHERE client_id=? AND topic=?",
+			-1, &ud->sub_select_stmt, NULL);
+	rc = sqlite3_prepare_v2(ud->db,
+			"UPDATE subscriptions set qos=? WHERE client_id=? AND topic=?",
+			-1, &ud->sub_update_stmt, NULL);
 
 	*userdata = ud;
 	return 0;
@@ -413,6 +440,106 @@ int mosquitto_persist_client_restore(void *userdata)
 				client_id, last_mid, disconnect_t);
 	}
 	/* FIXME - check rc */
+	sqlite3_finalize(stmt);
+
+	return 0;
+}
+
+
+/* ==================================================
+ * Subscriptions
+ * ================================================== */
+
+int mosquitto_persist_subscription_add(void *userdata, const char *client_id, const char *topic, int qos)
+{
+	struct mosquitto_sqlite *ud = (struct mosquitto_sqlite *)userdata;
+	sqlite3_stmt *stmt = NULL;
+	int rc = 1;
+	int rc2;
+	int client_id_pos, topic_pos, qos_pos;
+
+	if(sqlite3_bind_text(ud->sub_select_stmt, 1, client_id, strlen(client_id), SQLITE_STATIC) == SQLITE_OK){
+		if(sqlite3_bind_text(ud->sub_select_stmt, 2, topic, strlen(topic), SQLITE_STATIC) == SQLITE_OK){
+			rc2 = sqlite3_step(ud->sub_select_stmt);
+			if(rc2 == SQLITE_ROW){
+				stmt = ud->sub_update_stmt;
+				qos_pos = 1;
+				client_id_pos = 2;
+				topic_pos = 3;
+			}else if(rc2 == SQLITE_DONE){
+				stmt = ud->sub_insert_stmt;
+				client_id_pos = 1;
+				topic_pos = 2;
+				qos_pos = 3;
+			}
+		}
+	}
+	sqlite3_reset(ud->sub_select_stmt);
+	sqlite3_clear_bindings(ud->sub_select_stmt);
+
+	if(!stmt){
+		return 1;
+	}
+
+	if(sqlite3_bind_text(stmt, client_id_pos, client_id, strlen(client_id), SQLITE_STATIC) == SQLITE_OK){
+		if(sqlite3_bind_text(stmt, topic_pos, topic, strlen(topic), SQLITE_STATIC) == SQLITE_OK){
+			if(sqlite3_bind_int(stmt, qos_pos, qos) == SQLITE_OK){
+				rc2 = sqlite3_step(stmt);
+				if(rc2 == SQLITE_DONE){
+					rc = 0;
+				}
+			}
+		}
+	}
+	sqlite3_reset(stmt);
+	sqlite3_clear_bindings(stmt);
+
+	return rc;
+}
+
+
+int mosquitto_persist_subscription_delete(void *userdata, const char *client_id, const char *topic)
+{
+	struct mosquitto_sqlite *ud = (struct mosquitto_sqlite *)userdata;
+	int rc = 1;
+
+	if(sqlite3_bind_text(ud->sub_delete_stmt, 1, client_id, strlen(client_id), SQLITE_STATIC) == SQLITE_OK){
+		if(sqlite3_bind_text(ud->sub_delete_stmt, 2, topic, strlen(topic), SQLITE_STATIC) == SQLITE_OK){
+			if(sqlite3_step(ud->sub_delete_stmt) == SQLITE_DONE){
+				rc = 0;
+			}
+		}
+	}
+	sqlite3_reset(ud->sub_delete_stmt);
+	sqlite3_clear_bindings(ud->sub_delete_stmt);
+
+	return rc;
+}
+
+
+int mosquitto_persist_subscription_restore(void *userdata)
+{
+	struct mosquitto_sqlite *ud = (struct mosquitto_sqlite *)userdata;
+	sqlite3_stmt *stmt;
+	int rc = 1;
+	int rc2;
+
+	const char *client_id;
+	const char *topic;
+	int qos;
+
+	rc = sqlite3_prepare_v2(ud->db,
+			"SELECT client_id,topic,qos FROM subscriptions",
+			-1, &stmt, NULL);
+	while((rc = sqlite3_step(stmt)) == SQLITE_ROW){
+		client_id = (const char *)sqlite3_column_text(stmt, 0);
+		topic = (const char *)sqlite3_column_text(stmt, 1);
+		qos = sqlite3_column_int(stmt, 2);
+
+		rc2 = mosquitto_persist_subscription_load(
+				client_id, topic, qos);
+		if(rc2) return rc2;
+	}
 	sqlite3_finalize(stmt);
 
 	return 0;

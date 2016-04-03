@@ -2,3 +2,4 @@ _mosquitto_log_printf
 _mosquitto_persist_msg_store_load
 _mosquitto_persist_retain_load
 _mosquitto_persist_client_load
+_mosquitto_persist_subscription_load

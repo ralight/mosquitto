@@ -36,4 +36,8 @@ int persist__client_add(struct mosquitto_db *db, const char *client_id, int last
 int persist__client_delete(struct mosquitto_db *db, const char *client_id);
 int persist__client_restore(struct mosquitto_db *db);
 
+int persist__sub_add(struct mosquitto_db *db, const char *client_id, const char *topic, int qos);
+int persist__sub_delete(struct mosquitto_db *db, const char *client_id, const char *topic);
+int persist__sub_restore(struct mosquitto_db *db);
+
 #endif
