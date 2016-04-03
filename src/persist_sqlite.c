@@ -33,6 +33,8 @@ struct mosquitto_sqlite {
 	sqlite3_stmt *msg_store_delete_stmt;
 	sqlite3_stmt *retain_insert_stmt;
 	sqlite3_stmt *retain_delete_stmt;
+	sqlite3_stmt *client_insert_stmt;
+	sqlite3_stmt *client_delete_stmt;
 };
 
 int mosquitto_persist_plugin_version(void)
@@ -58,12 +60,8 @@ static int create_tables(struct mosquitto_sqlite *ud)
 				"payload BLOB"
 			");",
 			NULL, NULL, NULL);
-	if(rc){
-		mosquitto_log_printf(MOSQ_LOG_ERR, "Error in mosquitto_persist_plugin_init for sqlite plugin."); /* FIXME - print sqlite error */
-		mosquitto_log_printf(MOSQ_LOG_ERR, "%s", sqlite3_errstr(rc));
-		sqlite3_close(ud->db);
-		return 1;
-	}
+	if(rc) goto error;
+
 
 	rc = sqlite3_exec(ud->db,
 			"CREATE TABLE IF NOT EXISTS retained_msgs "
@@ -71,15 +69,28 @@ static int create_tables(struct mosquitto_sqlite *ud)
 				"store_id INTEGER PRIMARY KEY"
 			");",
 			NULL, NULL, NULL);
-	if(rc){
-		mosquitto_log_printf(MOSQ_LOG_ERR, "Error in mosquitto_persist_plugin_init for sqlite plugin."); /* FIXME - print sqlite error */
-		mosquitto_log_printf(MOSQ_LOG_ERR, "%s", sqlite3_errstr(rc));
-		sqlite3_close(ud->db);
-		return 1;
-	}
+	if(rc) goto error;
+
+
+	rc = sqlite3_exec(ud->db,
+			"CREATE TABLE IF NOT EXISTS clients "
+			"("
+				"client_id TEXT PRIMARY KEY,"
+				"last_mid INTEGER,"
+				"disconnect_t INTEGER"
+			");",
+			NULL, NULL, NULL);
+	if(rc) goto error;
 
 	return 0;
+
+error:
+	mosquitto_log_printf(MOSQ_LOG_ERR, "Error in mosquitto_persist_plugin_init for sqlite plugin."); /* FIXME - print sqlite error */
+	mosquitto_log_printf(MOSQ_LOG_ERR, "%s", sqlite3_errstr(rc));
+	sqlite3_close(ud->db);
+	return 1;
 }
+
 
 int mosquitto_persist_plugin_init(void **userdata, struct mosquitto_plugin_opt *opts, int opt_count)
 {
@@ -116,10 +127,17 @@ int mosquitto_persist_plugin_init(void **userdata, struct mosquitto_plugin_opt *
 	rc = sqlite3_prepare_v2(ud->db,
 			"DELETE FROM retained_msgs WHERE store_id=?",
 			-1, &ud->retain_delete_stmt, NULL);
+	rc = sqlite3_prepare_v2(ud->db,
+			"INSERT INTO clients (client_id, last_mid, disconnect_t) VALUES(?,?,?)",
+			-1, &ud->client_insert_stmt, NULL);
+	rc = sqlite3_prepare_v2(ud->db,
+			"DELETE FROM clients WHERE client_id=?",
+			-1, &ud->client_delete_stmt, NULL);
 
 	*userdata = ud;
 	return 0;
 }
+
 
 int mosquitto_persist_plugin_cleanup(void *userdata, struct mosquitto_plugin_opt *opts, int opt_count)
 {
@@ -321,6 +339,78 @@ int mosquitto_persist_retain_restore(void *userdata)
 		if(rc2){
 			return rc2;
 		}
+	}
+	/* FIXME - check rc */
+	sqlite3_finalize(stmt);
+
+	return 0;
+}
+
+
+/* ==================================================
+ * Clients
+ * ================================================== */
+
+int mosquitto_persist_client_add(void *userdata, const char *client_id, int last_mid, time_t disconnect_t)
+{
+	struct mosquitto_sqlite *ud = (struct mosquitto_sqlite *)userdata;
+	int rc = 1;
+	int rc2;
+
+	if(sqlite3_bind_text(ud->client_insert_stmt, 1, client_id, strlen(client_id), SQLITE_STATIC) == SQLITE_OK){
+		if(sqlite3_bind_int(ud->client_insert_stmt, 2, last_mid) == SQLITE_OK){
+			if(sqlite3_bind_int64(ud->client_insert_stmt, 3, disconnect_t) == SQLITE_OK){
+				rc2 = sqlite3_step(ud->client_insert_stmt);
+				if(rc2 == SQLITE_DONE){
+					rc = 0;
+				}
+			}
+		}
+	}
+	sqlite3_reset(ud->client_insert_stmt);
+	sqlite3_clear_bindings(ud->client_insert_stmt);
+
+	return rc;
+}
+
+
+int mosquitto_persist_client_delete(void *userdata, const char *client_id)
+{
+	struct mosquitto_sqlite *ud = (struct mosquitto_sqlite *)userdata;
+	int rc = 1;
+
+	if(sqlite3_bind_text(ud->client_delete_stmt, 1, client_id, strlen(client_id), SQLITE_STATIC) == SQLITE_OK){
+		if(sqlite3_step(ud->client_delete_stmt) == SQLITE_DONE){
+			rc = 0;
+		}
+	}
+	sqlite3_reset(ud->client_delete_stmt);
+	sqlite3_clear_bindings(ud->client_delete_stmt);
+
+	return rc;
+}
+
+
+int mosquitto_persist_client_restore(void *userdata)
+{
+	struct mosquitto_sqlite *ud = (struct mosquitto_sqlite *)userdata;
+	sqlite3_stmt *stmt;
+	int rc = 1;
+
+	const char *client_id;
+	int last_mid;
+	time_t disconnect_t;
+
+	rc = sqlite3_prepare_v2(ud->db,
+			"SELECT client_id,last_mid,disconnect_t FROM clients",
+			-1, &stmt, NULL);
+	while((rc = sqlite3_step(stmt)) == SQLITE_ROW){
+		client_id = (const char *)sqlite3_column_text(stmt, 0);
+		last_mid = sqlite3_column_int(stmt, 1);
+		disconnect_t = sqlite3_column_int64(stmt, 2);
+
+		mosquitto_persist_client_load(
+				client_id, last_mid, disconnect_t);
 	}
 	/* FIXME - check rc */
 	sqlite3_finalize(stmt);

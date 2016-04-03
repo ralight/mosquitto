@@ -333,6 +333,9 @@ struct mosquitto__persist_plugin{
 	int (*retain_add)(void *userdata, uint64_t store_id);
 	int (*retain_delete)(void *userdata, uint64_t store_id);
 	int (*retain_restore)(void *userdata);
+	int (*client_add)(void *userdata, const char *client_id, int last_mid, time_t disconnect_t);
+	int (*client_delete)(void *userdata, const char *client_id);
+	int (*client_restore)(void *userdata);
 };
 
 struct mosquitto_db{

@@ -32,4 +32,8 @@ int persist__msg_store_delete(struct mosquitto_db *db, struct mosquitto_msg_stor
 int persist__retain_add(struct mosquitto_db *db, uint64_t store_id);
 int persist__retain_delete(struct mosquitto_db *db, uint64_t store_id);
 
+int persist__client_add(struct mosquitto_db *db, const char *client_id, int last_mid, time_t disconnect_t);
+int persist__client_delete(struct mosquitto_db *db, const char *client_id);
+int persist__client_restore(struct mosquitto_db *db);
+
 #endif

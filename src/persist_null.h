@@ -37,4 +37,8 @@ int persist__retain_add_null(void *userdata, uint64_t store_id);
 int persist__retain_delete_null(void *userdata, uint64_t store_id);
 int persist__retain_restore_null(void *userdata);
 
+int persist__client_add_null(void *userdata, const char *client_id, int last_mid, time_t disconnect_t);
+int persist__client_delete_null(void *userdata, const char *client_id);
+int persist__client_restore_null(void *userdata);
+
 #endif

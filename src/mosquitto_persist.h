@@ -23,4 +23,6 @@ int mosquitto_persist_msg_store_load(
 		int payloadlen, const void *payload);
 
 int mosquitto_persist_retain_load(uint64_t store_id);
+
+int mosquitto_persist_client_load(const char *client_id, int last_mid, time_t disconnect_t);
 #endif

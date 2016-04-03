@@ -50,6 +50,10 @@ int persist__plugin_init(struct mosquitto_db *db)
 		db->persist_plugin.msg_store_restore = persist__msg_store_restore_null;
 		db->persist_plugin.retain_add = persist__retain_add_null;
 		db->persist_plugin.retain_delete = persist__retain_delete_null;
+		db->persist_plugin.retain_restore = persist__retain_restore_null;
+		db->persist_plugin.client_add = persist__client_add_null;
+		db->persist_plugin.client_delete = persist__client_delete_null;
+		db->persist_plugin.client_restore = persist__client_restore_null;
 		return 0;
 	}
 
@@ -126,6 +130,24 @@ int persist__plugin_init(struct mosquitto_db *db)
 		return 1;
 	}
 
+	db->persist_plugin.client_add = LIB_SYM(db->persist_plugin.lib, "mosquitto_persist_client_add");
+	if(!db->persist_plugin.client_add){
+		sym_error(&db->persist_plugin.lib, "client_add");
+		return 1;
+	}
+
+	db->persist_plugin.client_delete = LIB_SYM(db->persist_plugin.lib, "mosquitto_persist_client_delete");
+	if(!db->persist_plugin.client_delete){
+		sym_error(&db->persist_plugin.lib, "client_delete");
+		return 1;
+	}
+
+	db->persist_plugin.client_restore = LIB_SYM(db->persist_plugin.lib, "mosquitto_persist_client_restore");
+	if(!db->persist_plugin.client_restore){
+		sym_error(&db->persist_plugin.lib, "client_restore");
+		return 1;
+	}
+
 
 	/* Initialise plugin */
 	rc = db->persist_plugin.plugin_init(&db->persist_plugin.userdata, NULL, 0); /* FIXME - options */
@@ -181,8 +203,11 @@ int persist__plugin_restore(struct mosquitto_db *db)
 	rc = db->persist_plugin.retain_restore(db->persist_plugin.userdata);
 	if(rc) return rc;
 	//rc = db->persist_plugin.client_restore(db->persist_plugin.userdata);
+	if(rc) return rc;
 	//rc = db->persist_plugin.client_msg_restore(db->persist_plugin.userdata);
+	if(rc) return rc;
 	//rc = db->persist_plugin.subsciption_restore(db->persist_plugin.userdata);
+	if(rc) return rc;
 
 	return 0;
 }
@@ -261,6 +286,38 @@ int mosquitto_persist_retain_load(uint64_t store_id)
 }
 
 
+int mosquitto_persist_client_load(const char *client_id, int last_mid, time_t disconnect_t)
+{
+	struct mosquitto *context, *found_context;
+	struct mosquitto_db *db = mosquitto__get_db();
+
+	HASH_FIND(hh_id, db->contexts_by_id, client_id, strlen(client_id), found_context);
+	if(found_context){
+		log__printf(NULL, MOSQ_LOG_ERR, "Error: Duplicate client when restoring persistent database.");
+		return 1;
+	}
+
+	context = context__init(db, -1);
+	if(!context){
+		log__printf(NULL, MOSQ_LOG_ERR, "Error: Out of memory.");
+		return MOSQ_ERR_INVAL;
+	}
+
+	context->id = mosquitto__strdup(client_id);
+	if(!context->id){
+		mosquitto__free(context);
+		log__printf(NULL, MOSQ_LOG_ERR, "Error: Out of memory.");
+		return MOSQ_ERR_INVAL;
+	}
+	context->last_mid = last_mid;
+	context->disconnect_t = disconnect_t;
+
+	HASH_ADD_KEYPTR(hh_id, db->contexts_by_id, context->id, strlen(context->id), context);
+
+	return MOSQ_ERR_SUCCESS;
+}
+
+
 
 /* ==================================================
  * Message store
@@ -322,5 +379,28 @@ int persist__retain_delete(struct mosquitto_db *db, uint64_t store_id)
 
 	rc = db->persist_plugin.retain_delete(
 			db->persist_plugin.userdata, store_id);
+	return rc;
+}
+
+
+/* ==================================================
+ * Client
+ * ================================================== */
+
+int persist__client_add(struct mosquitto_db *db, const char *client_id, int last_mid, time_t disconnect_t)
+{
+	int rc;
+
+	rc = db->persist_plugin.client_add(
+			db->persist_plugin.userdata, client_id, last_mid, disconnect_t);
+	return rc;
+}
+
+int persist__client_delete(struct mosquitto_db *db, const char *client_id)
+{
+	int rc;
+
+	rc = db->persist_plugin.client_delete(
+			db->persist_plugin.userdata, client_id);
 	return rc;
 }

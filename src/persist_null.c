@@ -51,11 +51,11 @@ int persist__msg_store_restore_null(void *userdata)
 	return 0;
 }
 
+
 int persist__retain_add_null(void *userdata, uint64_t store_id)
 {
 	return 0;
 }
-
 
 int persist__retain_delete_null(void *userdata, uint64_t store_id)
 {
@@ -63,6 +63,22 @@ int persist__retain_delete_null(void *userdata, uint64_t store_id)
 }
 
 int persist__retain_restore_null(void *userdata)
+{
+	return 0;
+}
+
+
+int persist__client_add_null(void *userdata, const char *client_id, int last_mid, time_t disconnect_t)
+{
+	return 0;
+}
+
+int persist__client_delete_null(void *userdata, const char *client_id)
+{
+	return 0;
+}
+
+int persist__client_restore_null(void *userdata)
 {
 	return 0;
 }

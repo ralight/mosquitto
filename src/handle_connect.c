@@ -23,6 +23,7 @@ Contributors:
 #include "mqtt3_protocol.h"
 #include "memory_mosq.h"
 #include "packet_mosq.h"
+#include "persist_plugin.h"
 #include "send_mosq.h"
 #include "sys_tree.h"
 #include "time_mosq.h"
@@ -441,6 +442,12 @@ int handle__connect(struct mosquitto_db *db, struct mosquitto *context)
 
 		context->clean_session = clean_session;
 
+#ifdef WITH_PERSISTENCE
+		if(context->clean_session){
+			persist__client_delete(db, client_id);
+		}
+#endif
+
 		if(context->clean_session == false && found_context->clean_session == false){
 			if(found_context->msgs){
 				context->msgs = found_context->msgs;
@@ -561,6 +568,7 @@ int handle__connect(struct mosquitto_db *db, struct mosquitto *context)
 
 #ifdef WITH_PERSISTENCE
 	if(!clean_session){
+		persist__client_add(db, context->id, context->last_mid, 0);
 		db->persistence_changes++;
 	}
 #endif

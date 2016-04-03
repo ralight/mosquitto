@@ -2,4 +2,5 @@
 	mosquitto_log_printf;
 	mosquitto_persist_msg_store_load;
 	mosquitto_persist_retain_load;
+	mosquitto_persist_client_load;
 };
