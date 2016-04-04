@@ -39,6 +39,8 @@ int persist__plugin_init(struct mosquitto_db *db)
 	int version;
 	int rc;
 
+	db->persist_plugin.restoring = false;
+
 	if(db->config->persistence_plugin == NULL){
 		db->persist_plugin.lib = NULL;
 		db->persist_plugin.userdata = NULL;
@@ -254,17 +256,35 @@ int persist__plugin_restore(struct mosquitto_db *db)
 {
 	int rc;
 
-	rc = db->persist_plugin.msg_store_restore(db->persist_plugin.userdata);
-	if(rc) return rc;
-	rc = db->persist_plugin.retain_restore(db->persist_plugin.userdata);
-	if(rc) return rc;
-	rc = db->persist_plugin.client_restore(db->persist_plugin.userdata);
-	if(rc) return rc;
-	rc = db->persist_plugin.sub_restore(db->persist_plugin.userdata);
-	if(rc) return rc;
-	rc = db->persist_plugin.client_msg_restore(db->persist_plugin.userdata);
-	if(rc) return rc;
+	db->persist_plugin.restoring = true;
 
+	rc = db->persist_plugin.msg_store_restore(db->persist_plugin.userdata);
+	if(rc){
+		db->persist_plugin.restoring = false;
+		return rc;
+	}
+	rc = db->persist_plugin.retain_restore(db->persist_plugin.userdata);
+	if(rc){
+		db->persist_plugin.restoring = false;
+		return rc;
+	}
+	rc = db->persist_plugin.client_restore(db->persist_plugin.userdata);
+	if(rc){
+		db->persist_plugin.restoring = false;
+		return rc;
+	}
+	rc = db->persist_plugin.sub_restore(db->persist_plugin.userdata);
+	if(rc){
+		db->persist_plugin.restoring = false;
+		return rc;
+	}
+	rc = db->persist_plugin.client_msg_restore(db->persist_plugin.userdata);
+	if(rc){
+		db->persist_plugin.restoring = false;
+		return rc;
+	}
+
+	db->persist_plugin.restoring = false;
 	return 0;
 }
 
@@ -281,6 +301,10 @@ int mosquitto_persist_msg_store_load(
 	mosquitto__payload_uhpa payload_local;
 
 	struct mosquitto_db *db = mosquitto__get_db();
+
+	if(!db->persist_plugin.restoring){
+		return 1;
+	}
 
 	if(dbid > db->last_db_id){
 		db->last_db_id = dbid;
@@ -329,6 +353,10 @@ int mosquitto_persist_retain_load(uint64_t store_id)
 	struct mosquitto_msg_store_load *load;
 	struct mosquitto_db *db = mosquitto__get_db();
 
+	if(!db->persist_plugin.restoring){
+		return 1;
+	}
+
 	HASH_FIND(hh, db->msg_store_load, &store_id, sizeof(uint64_t), load);
 	if(load){
 		sub__messages_queue(db, NULL, load->store->topic, load->store->qos, load->store->retain, &load->store, false);
@@ -346,6 +374,10 @@ int mosquitto_persist_client_load(const char *client_id, int last_mid, time_t di
 {
 	struct mosquitto *context, *found_context;
 	struct mosquitto_db *db = mosquitto__get_db();
+
+	if(!db->persist_plugin.restoring){
+		return 1;
+	}
 
 	HASH_FIND(hh_id, db->contexts_by_id, client_id, strlen(client_id), found_context);
 	if(found_context){
@@ -380,6 +412,10 @@ int mosquitto_persist_subscription_load(const char *client_id, const char *topic
 	struct mosquitto_db *db = mosquitto__get_db();
 	int rc;
 
+	if(!db->persist_plugin.restoring){
+		return 1;
+	}
+
 	HASH_FIND(hh_id, db->contexts_by_id, client_id, strlen(client_id), context);
 	if(!context){
 		log__printf(NULL, MOSQ_LOG_ERR, "Error: Missing client when restoring persistent database.");
@@ -401,6 +437,9 @@ int mosquitto_persist_client_msg_load(const char *client_id, uint64_t store_id, 
 	struct mosquitto_msg_store_load *load;
 	struct mosquitto_db *db = mosquitto__get_db();
 
+	if(!db->persist_plugin.restoring){
+		return 1;
+	}
 
 	HASH_FIND(hh_id, db->contexts_by_id, client_id, strlen(client_id), context);
 	if(!context){

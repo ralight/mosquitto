@@ -343,6 +343,7 @@ struct mosquitto__persist_plugin{
 	int (*client_msg_delete)(void *userdata, const char *client_id, int mid, int direction);
 	int (*client_msg_update)(void *userdata, const char *client_id, int mid, int direction, int state, int dup);
 	int (*client_msg_restore)(void *userdata);
+	bool restoring;
 };
 
 struct mosquitto_db{
