@@ -46,4 +46,9 @@ int persist__sub_delete_null(void *userdata, const char *client_id, const char *
 int persist__sub_update_null(void *userdata, const char *client_id, const char *topic, int qos);
 int persist__sub_restore_null(void *userdata);
 
+int persist__client_msg_add_null(void *userdata, const char *client_id, uint64_t store_id, int mid, int qos, int retained, int direction, int state, int dup);
+int persist__client_msg_delete_null(void *userdata, const char *client_id, int mid, int direction);
+int persist__client_msg_update_null(void *userdata, const char *client_id, int mid, int direction, int state, int dup);
+int persist__client_msg_restore_null(void *userdata);
+
 #endif

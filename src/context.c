@@ -94,6 +94,7 @@ void context__cleanup(struct mosquitto_db *db, struct mosquitto *context, bool d
 {
 	struct mosquitto__packet *packet;
 	struct mosquitto_client_msg *msg, *next;
+	struct mosquitto *found_context;
 	int i;
 
 	if(!context) return;
@@ -139,14 +140,6 @@ void context__cleanup(struct mosquitto_db *db, struct mosquitto *context, bool d
 	mosquitto__free(context->address);
 	context->address = NULL;
 
-	if(context->id){
-		assert(db); /* db can only be NULL here if the client hasn't sent a
-					   CONNECT and hence wouldn't have an id. */
-
-		HASH_DELETE(hh_id, db->contexts_by_id, context);
-		mosquitto__free(context->id);
-		context->id = NULL;
-	}
 	packet__cleanup(&(context->in_packet));
 	if(context->current_out_packet){
 		packet__cleanup(context->current_out_packet);
@@ -175,6 +168,17 @@ void context__cleanup(struct mosquitto_db *db, struct mosquitto *context, bool d
 		}
 		context->msgs = NULL;
 		context->last_msg = NULL;
+	}
+	if(context->id){
+		assert(db); /* db can only be NULL here if the client hasn't sent a
+					   CONNECT and hence wouldn't have an id. */
+
+		HASH_FIND(hh_id, db->contexts_by_id, context->id, strlen(context->id), found_context);
+		if(found_context){
+			HASH_DELETE(hh_id, db->contexts_by_id, context);
+		}
+		mosquitto__free(context->id);
+		context->id = NULL;
 	}
 	if(do_free){
 		mosquitto__free(context);

@@ -339,6 +339,10 @@ struct mosquitto__persist_plugin{
 	int (*sub_add)(void *userdata, const char *client_id, const char *topic, int qos);
 	int (*sub_delete)(void *userdata, const char *client_id, const char *topic);
 	int (*sub_restore)(void *userdata);
+	int (*client_msg_add)(void *userdata, const char *client_id, uint64_t store_id, int mid, int qos, int retained, int direction, int state, int dup);
+	int (*client_msg_delete)(void *userdata, const char *client_id, int mid, int direction);
+	int (*client_msg_update)(void *userdata, const char *client_id, int mid, int direction, int state, int dup);
+	int (*client_msg_restore)(void *userdata);
 };
 
 struct mosquitto_db{
@@ -521,7 +525,7 @@ int db__message_count(int *count);
 int db__message_delete(struct mosquitto_db *db, struct mosquitto *context, uint16_t mid, enum mosquitto_msg_direction dir);
 int db__message_insert(struct mosquitto_db *db, struct mosquitto *context, uint16_t mid, enum mosquitto_msg_direction dir, int qos, bool retain, struct mosquitto_msg_store *stored);
 int db__message_release(struct mosquitto_db *db, struct mosquitto *context, uint16_t mid, enum mosquitto_msg_direction dir);
-int db__message_update(struct mosquitto *context, uint16_t mid, enum mosquitto_msg_direction dir, enum mosquitto_msg_state state);
+int db__message_update(struct mosquitto_db *db, struct mosquitto *context, uint16_t mid, enum mosquitto_msg_direction dir, enum mosquitto_msg_state state);
 int db__message_write(struct mosquitto_db *db, struct mosquitto *context);
 int db__messages_delete(struct mosquitto_db *db, struct mosquitto *context);
 int db__messages_easy_queue(struct mosquitto_db *db, struct mosquitto *context, const char *topic, int qos, uint32_t payloadlen, const void *payload, int retain);

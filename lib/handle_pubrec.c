@@ -33,7 +33,7 @@ Contributors:
 #endif
 
 
-int handle__pubrec(struct mosquitto *mosq)
+int handle__pubrec(struct mosquitto_db *db, struct mosquitto *mosq)
 {
 	uint16_t mid;
 	int rc;
@@ -44,7 +44,7 @@ int handle__pubrec(struct mosquitto *mosq)
 #ifdef WITH_BROKER
 	log__printf(NULL, MOSQ_LOG_DEBUG, "Received PUBREC from %s (Mid: %d)", mosq->id, mid);
 
-	rc = db__message_update(mosq, mid, mosq_md_out, mosq_ms_wait_for_pubcomp);
+	rc = db__message_update(db, mosq, mid, mosq_md_out, mosq_ms_wait_for_pubcomp);
 #else
 	log__printf(mosq, MOSQ_LOG_DEBUG, "Client %s received PUBREC (Mid: %d)", mosq->id, mid);
 

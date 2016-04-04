@@ -46,7 +46,7 @@ int handle__packet(struct mosquitto *mosq)
 		case PUBLISH:
 			return handle__publish(mosq);
 		case PUBREC:
-			return handle__pubrec(mosq);
+			return handle__pubrec(NULL, mosq);
 		case PUBREL:
 			return handle__pubrel(NULL, mosq);
 		case CONNACK:

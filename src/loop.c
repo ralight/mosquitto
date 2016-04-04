@@ -419,8 +419,6 @@ void do_disconnect(struct mosquitto_db *db, struct mosquitto *context)
 			context__add_to_disused(db, context);
 			if(context->id){
 				HASH_DELETE(hh_id, db->contexts_by_id, context);
-				mosquitto__free(context->id);
-				context->id = NULL;
 			}
 		}
 		context->state = mosq_cs_disconnected;

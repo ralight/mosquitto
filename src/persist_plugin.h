@@ -40,4 +40,9 @@ int persist__sub_add(struct mosquitto_db *db, const char *client_id, const char 
 int persist__sub_delete(struct mosquitto_db *db, const char *client_id, const char *topic);
 int persist__sub_restore(struct mosquitto_db *db);
 
+int persist__client_msg_add(struct mosquitto_db *db, const char *client_id, struct mosquitto_msg_store *stored, int mid, int qos, int retained, int direction, int state, int dup);
+int persist__client_msg_delete(struct mosquitto_db *db, const char *client_id, int mid, int direction);
+int persist__client_msg_update(struct mosquitto_db *db, const char *client_id, int mid, int direction, int state, int dup);
+int persist__client_msg_restore(struct mosquitto_db *db);
+
 #endif

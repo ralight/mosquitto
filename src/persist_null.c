@@ -104,3 +104,25 @@ int persist__sub_restore_null(void *userdata)
 	return 0;
 }
 
+int persist__client_msg_add_null(void *userdata, const char *client_id, uint64_t store_id, int mid, int qos, int retained, int direction, int state, int dup)
+{
+	return 0;
+}
+
+int persist__client_msg_delete_null(void *userdata, const char *client_id, int mid, int direction)
+{
+	return 0;
+}
+
+
+int persist__client_msg_update_null(void *userdata, const char *client_id, int mid, int direction, int state, int dup)
+{
+	return 0;
+}
+
+
+int persist__client_msg_restore_null(void *userdata)
+{
+	return 0;
+}
+

@@ -105,7 +105,10 @@ int db__open(struct mosquitto__config *config, struct mosquitto_db *db)
 #ifdef WITH_PERSISTENCE
 	if(config->persistence && config->persistence_filepath){
 		if(config->persistence_plugin){
-			if(persist__plugin_restore(db)) return 1;
+			if(persist__plugin_restore(db)){
+				/* FIXME - log error */
+				return 1;
+			}
 		}else{
 			if(persist__restore(db)) return 1;
 		}
@@ -224,6 +227,7 @@ static void db__message_remove(struct mosquitto_db *db, struct mosquitto *contex
 		return;
 	}
 
+	/* FIXME */ persist__client_msg_delete(db, context->id, (*msg)->mid, (*msg)->direction);
 	if((*msg)->store){
 		db__msg_store_deref(db, &(*msg)->store);
 	}
@@ -417,6 +421,7 @@ int db__message_insert(struct mosquitto_db *db, struct mosquitto *context, uint1
 	if(state == mosq_ms_queued){
 		db->persistence_changes++;
 	}
+	/* FIXME */ persist__client_msg_add(db, context->id,  stored, mid, qos, retain, dir, state, false);
 #endif
 
 	msg = mosquitto__malloc(sizeof(struct mosquitto_client_msg));
@@ -483,7 +488,7 @@ int db__message_insert(struct mosquitto_db *db, struct mosquitto *context, uint1
 #endif
 }
 
-int db__message_update(struct mosquitto *context, uint16_t mid, enum mosquitto_msg_direction dir, enum mosquitto_msg_state state)
+int db__message_update(struct mosquitto_db *db, struct mosquitto *context, uint16_t mid, enum mosquitto_msg_direction dir, enum mosquitto_msg_state state)
 {
 	struct mosquitto_client_msg *tail;
 
@@ -492,6 +497,9 @@ int db__message_update(struct mosquitto *context, uint16_t mid, enum mosquitto_m
 		if(tail->mid == mid && tail->direction == dir){
 			tail->state = state;
 			tail->timestamp = mosquitto_time();
+#ifdef WITH_PERSISTENCE
+			/* FIXME */ persist__client_msg_update(db, context->id, mid, dir, state, 0);
+#endif
 			return MOSQ_ERR_SUCCESS;
 		}
 		tail = tail->next;
@@ -507,6 +515,9 @@ int db__messages_delete(struct mosquitto_db *db, struct mosquitto *context)
 
 	tail = context->msgs;
 	while(tail){
+#ifdef WITH_PERSISTENCE
+		/* FIXME */ persist__client_msg_delete(db, context->id, tail->mid, tail->direction);
+#endif
 		db__msg_store_deref(db, &tail->store);
 		next = tail->next;
 		mosquitto__free(tail);
@@ -675,6 +686,7 @@ int db__message_reconnect_reset(struct mosquitto_db *db, struct mosquitto *conte
 						break;
 				}
 			}
+			/* FIXME */ persist__client_msg_update(db, context->id, msg-> mid, msg->direction, msg->state, msg->dup);
 		}else{
 			if(msg->qos != 2){
 				/* Anything <QoS 2 can be completely retried by the client at
