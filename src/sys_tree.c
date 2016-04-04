@@ -23,6 +23,7 @@ Contributors:
 
 #include "mosquitto_broker.h"
 #include "memory_mosq.h"
+#include "persist_plugin.h"
 #include "time_mosq.h"
 
 #define BUFLEN 100
@@ -186,6 +187,10 @@ void sys__update(struct mosquitto_db *db, int interval, time_t start_time)
 
 	now = mosquitto_time();
 
+#ifdef WITH_PERSISTENCE
+	persist__transaction_begin(db);
+#endif
+
 	if(interval && now - interval > last_update){
 		uptime = now - start_time;
 		snprintf(buf, BUFLEN, "%d seconds", (int)uptime);
@@ -328,6 +333,10 @@ void sys__update(struct mosquitto_db *db, int interval, time_t start_time)
 
 		last_update = mosquitto_time();
 	}
+#ifdef WITH_PERSISTENCE
+	persist__transaction_end(db);
+#endif
+
 }
 
 #endif

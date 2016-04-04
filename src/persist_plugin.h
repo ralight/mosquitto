@@ -45,4 +45,7 @@ int persist__client_msg_delete(struct mosquitto_db *db, const char *client_id, i
 int persist__client_msg_update(struct mosquitto_db *db, const char *client_id, int mid, int direction, int state, int dup);
 int persist__client_msg_restore(struct mosquitto_db *db);
 
+int persist__transaction_begin(struct mosquitto_db *db);
+int persist__transaction_end(struct mosquitto_db *db);
+
 #endif

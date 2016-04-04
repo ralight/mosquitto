@@ -63,6 +63,8 @@ int persist__plugin_init(struct mosquitto_db *db)
 		db->persist_plugin.client_msg_delete = persist__client_msg_delete_null;
 		db->persist_plugin.client_msg_update = persist__client_msg_update_null;
 		db->persist_plugin.client_msg_restore = persist__client_msg_restore_null;
+		db->persist_plugin.transaction_begin = persist__transaction_begin_null;
+		db->persist_plugin.transaction_end = persist__transaction_end_null;
 		return 0;
 	}
 
@@ -199,6 +201,18 @@ int persist__plugin_init(struct mosquitto_db *db)
 		return 1;
 	}
 
+	db->persist_plugin.transaction_begin = LIB_SYM(db->persist_plugin.lib, "mosquitto_persist_transaction_begin");
+	if(!db->persist_plugin.transaction_begin){
+		sym_error(&db->persist_plugin.lib, "transaction_begin");
+		return 1;
+	}
+
+	db->persist_plugin.transaction_end = LIB_SYM(db->persist_plugin.lib, "mosquitto_persist_transaction_end");
+	if(!db->persist_plugin.transaction_end){
+		sym_error(&db->persist_plugin.lib, "transaction_end");
+		return 1;
+	}
+
 
 	/* Initialise plugin */
 	rc = db->persist_plugin.plugin_init(&db->persist_plugin.userdata, NULL, 0); /* FIXME - options */
@@ -244,6 +258,8 @@ int persist__plugin_cleanup(struct mosquitto_db *db)
 	db->persist_plugin.client_msg_delete = persist__client_msg_delete_null;
 	db->persist_plugin.client_msg_update = persist__client_msg_update_null;
 	db->persist_plugin.client_msg_restore = persist__client_msg_restore_null;
+	db->persist_plugin.transaction_begin = persist__transaction_begin_null;
+	db->persist_plugin.transaction_end = persist__transaction_end_null;
 
 	return rc;
 }
@@ -600,5 +616,20 @@ int persist__client_msg_update(struct mosquitto_db *db, const char *client_id, i
 	rc = db->persist_plugin.client_msg_update(
 			db->persist_plugin.userdata, client_id, mid, direction, state, dup);
 	return rc;
+}
+
+
+/* ==================================================
+ * Transactions
+ * ================================================== */
+
+int persist__transaction_begin(struct mosquitto_db *db)
+{
+	return db->persist_plugin.transaction_begin(db->persist_plugin.userdata);
+}
+
+int persist__transaction_end(struct mosquitto_db *db)
+{
+	return db->persist_plugin.transaction_end(db->persist_plugin.userdata);
 }
 

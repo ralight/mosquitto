@@ -126,3 +126,14 @@ int persist__client_msg_restore_null(void *userdata)
 	return 0;
 }
 
+
+int persist__transaction_begin_null(void *userdata)
+{
+	return 0;
+}
+
+int persist__transaction_end_null(void *userdata)
+{
+	return 0;
+}
+

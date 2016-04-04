@@ -42,6 +42,8 @@ struct mosquitto_sqlite {
 	sqlite3_stmt *client_msg_insert_stmt;
 	sqlite3_stmt *client_msg_delete_stmt;
 	sqlite3_stmt *client_msg_update_stmt;
+	sqlite3_stmt *transaction_begin_stmt;
+	sqlite3_stmt *transaction_end_stmt;
 };
 
 int mosquitto_persist_plugin_version(void)
@@ -173,6 +175,10 @@ static int prepare_statements(struct mosquitto_sqlite *ud)
 	rc = sqlite3_prepare_v2(ud->db,
 			"UPDATE client_msgs set state=? WHERE client_id=? AND mid=? AND direction=?",
 			-1, &ud->client_msg_update_stmt, NULL);
+	rc = sqlite3_prepare_v2(ud->db, "BEGIN TRANSACTION",
+			-1, &ud->transaction_begin_stmt, NULL);
+	rc = sqlite3_prepare_v2(ud->db, "END TRANSACTION",
+			-1, &ud->transaction_end_stmt, NULL);
 
 	return rc;
 }
@@ -272,7 +278,6 @@ int mosquitto_persist_msg_store_add(void *userdata, uint64_t dbid, const char *s
 	struct mosquitto_sqlite *ud = (struct mosquitto_sqlite *)userdata;
 	int rc = 1;
 
-	printf("msg store add\n");
 	if(sqlite3_bind_int64(ud->msg_store_insert_stmt, 1, dbid) != SQLITE_OK){
 		goto cleanup;
 	}
@@ -327,7 +332,6 @@ cleanup:
 		mosquitto_log_printf(MOSQ_LOG_ERR, "SQLite error: %s", sqlite3_errmsg(ud->db));
 	}
 	sqlite3_reset(ud->msg_store_insert_stmt);
-	sqlite3_clear_bindings(ud->msg_store_insert_stmt);
 	return rc;
 }
 
@@ -337,7 +341,6 @@ int mosquitto_persist_msg_store_delete(void *userdata, uint64_t dbid)
 	struct mosquitto_sqlite *ud = (struct mosquitto_sqlite *)userdata;
 	int rc = 1;
 
-	printf("msg store delete\n");
 	if(sqlite3_bind_int64(ud->msg_store_delete_stmt, 1, dbid) == SQLITE_OK){
 		if(sqlite3_step(ud->msg_store_delete_stmt) == SQLITE_DONE){
 			rc = 0;
@@ -348,7 +351,6 @@ int mosquitto_persist_msg_store_delete(void *userdata, uint64_t dbid)
 		mosquitto_log_printf(MOSQ_LOG_ERR, "SQLite error: %s", sqlite3_errmsg(ud->db));
 	}
 	sqlite3_reset(ud->msg_store_delete_stmt);
-	sqlite3_clear_bindings(ud->msg_store_delete_stmt);
 	return rc;
 }
 
@@ -367,7 +369,6 @@ static int sqlite__persist_retain(sqlite3_stmt *stmt, uint64_t store_id)
 		}
 	}
 	sqlite3_reset(stmt);
-	sqlite3_clear_bindings(stmt);
 
 	return rc;
 }
@@ -377,7 +378,6 @@ int mosquitto_persist_retain_add(void *userdata, uint64_t store_id)
 {
 	struct mosquitto_sqlite *ud = (struct mosquitto_sqlite *)userdata;
 
-	printf("retain add\n");
 	return sqlite__persist_retain(ud->retain_insert_stmt, store_id);
 }
 
@@ -386,7 +386,6 @@ int mosquitto_persist_retain_delete(void *userdata, uint64_t store_id)
 {
 	struct mosquitto_sqlite *ud = (struct mosquitto_sqlite *)userdata;
 
-	printf("retain delete\n");
 	return sqlite__persist_retain(ud->retain_delete_stmt, store_id);
 }
 
@@ -428,7 +427,6 @@ int mosquitto_persist_client_add(void *userdata, const char *client_id, int last
 	int rc = 1;
 	int rc2;
 
-	printf("client add\n");
 	if(sqlite3_bind_text(ud->client_insert_stmt, 1, client_id, strlen(client_id), SQLITE_STATIC) == SQLITE_OK){
 		if(sqlite3_bind_int(ud->client_insert_stmt, 2, last_mid) == SQLITE_OK){
 			if(sqlite3_bind_int64(ud->client_insert_stmt, 3, disconnect_t) == SQLITE_OK){
@@ -440,7 +438,6 @@ int mosquitto_persist_client_add(void *userdata, const char *client_id, int last
 		}
 	}
 	sqlite3_reset(ud->client_insert_stmt);
-	sqlite3_clear_bindings(ud->client_insert_stmt);
 
 	return rc;
 }
@@ -451,14 +448,12 @@ int mosquitto_persist_client_delete(void *userdata, const char *client_id)
 	struct mosquitto_sqlite *ud = (struct mosquitto_sqlite *)userdata;
 	int rc = 1;
 
-	printf("client delete\n");
 	if(sqlite3_bind_text(ud->client_delete_stmt, 1, client_id, strlen(client_id), SQLITE_STATIC) == SQLITE_OK){
 		if(sqlite3_step(ud->client_delete_stmt) == SQLITE_DONE){
 			rc = 0;
 		}
 	}
 	sqlite3_reset(ud->client_delete_stmt);
-	sqlite3_clear_bindings(ud->client_delete_stmt);
 
 	return rc;
 }
@@ -504,7 +499,6 @@ int mosquitto_persist_subscription_add(void *userdata, const char *client_id, co
 	int rc2;
 	int client_id_pos, topic_pos, qos_pos;
 
-	printf("subscription add\n");
 	if(sqlite3_bind_text(ud->sub_select_stmt, 1, client_id, strlen(client_id), SQLITE_STATIC) == SQLITE_OK){
 		if(sqlite3_bind_text(ud->sub_select_stmt, 2, topic, strlen(topic), SQLITE_STATIC) == SQLITE_OK){
 			rc2 = sqlite3_step(ud->sub_select_stmt);
@@ -522,7 +516,6 @@ int mosquitto_persist_subscription_add(void *userdata, const char *client_id, co
 		}
 	}
 	sqlite3_reset(ud->sub_select_stmt);
-	sqlite3_clear_bindings(ud->sub_select_stmt);
 
 	if(!stmt){
 		return 1;
@@ -539,7 +532,6 @@ int mosquitto_persist_subscription_add(void *userdata, const char *client_id, co
 		}
 	}
 	sqlite3_reset(stmt);
-	sqlite3_clear_bindings(stmt);
 
 	return rc;
 }
@@ -550,7 +542,6 @@ int mosquitto_persist_subscription_delete(void *userdata, const char *client_id,
 	struct mosquitto_sqlite *ud = (struct mosquitto_sqlite *)userdata;
 	int rc = 1;
 
-	printf("subscription delete\n");
 	if(sqlite3_bind_text(ud->sub_delete_stmt, 1, client_id, strlen(client_id), SQLITE_STATIC) == SQLITE_OK){
 		if(sqlite3_bind_text(ud->sub_delete_stmt, 2, topic, strlen(topic), SQLITE_STATIC) == SQLITE_OK){
 			if(sqlite3_step(ud->sub_delete_stmt) == SQLITE_DONE){
@@ -559,7 +550,6 @@ int mosquitto_persist_subscription_delete(void *userdata, const char *client_id,
 		}
 	}
 	sqlite3_reset(ud->sub_delete_stmt);
-	sqlite3_clear_bindings(ud->sub_delete_stmt);
 
 	return rc;
 }
@@ -603,7 +593,6 @@ int mosquitto_persist_client_msg_add(void *userdata, const char *client_id, uint
 	struct mosquitto_sqlite *ud = (struct mosquitto_sqlite *)userdata;
 	int rc = 1;
 
-	printf("cmsg add\n");
 	if(sqlite3_bind_text(ud->client_msg_insert_stmt, 1, client_id, strlen(client_id), SQLITE_STATIC) != SQLITE_OK){
 		goto cleanup;
 	}
@@ -637,7 +626,6 @@ cleanup:
 		mosquitto_log_printf(MOSQ_LOG_ERR, "SQLite error: %s", sqlite3_errmsg(ud->db));
 	}
 	sqlite3_reset(ud->client_msg_insert_stmt);
-	sqlite3_clear_bindings(ud->client_msg_insert_stmt);
 	return rc;
 }
 
@@ -647,7 +635,6 @@ int mosquitto_persist_client_msg_delete(void *userdata, const char *client_id, i
 	struct mosquitto_sqlite *ud = (struct mosquitto_sqlite *)userdata;
 	int rc = 1;
 
-	printf("cmsg delete\n");
 	if(sqlite3_bind_text(ud->client_msg_delete_stmt, 1, client_id, strlen(client_id), SQLITE_STATIC) == SQLITE_OK){
 		if(sqlite3_bind_int(ud->client_msg_delete_stmt, 2, mid) == SQLITE_OK){
 			if(sqlite3_bind_int(ud->client_msg_delete_stmt, 3, direction) == SQLITE_OK){
@@ -658,7 +645,6 @@ int mosquitto_persist_client_msg_delete(void *userdata, const char *client_id, i
 		}
 	}
 	sqlite3_reset(ud->sub_delete_stmt);
-	sqlite3_clear_bindings(ud->sub_delete_stmt);
 
 	return rc;
 }
@@ -669,7 +655,6 @@ int mosquitto_persist_client_msg_update(void *userdata, const char *client_id, i
 	struct mosquitto_sqlite *ud = (struct mosquitto_sqlite *)userdata;
 	int rc = 1;
 
-	printf("cmsg update\n");
 	if(sqlite3_bind_int(ud->client_msg_update_stmt, 1, state) == SQLITE_OK){
 		if(sqlite3_bind_text(ud->client_msg_update_stmt, 2, client_id, strlen(client_id), SQLITE_STATIC) == SQLITE_OK){
 			if(sqlite3_bind_int(ud->client_msg_update_stmt, 3, mid) == SQLITE_OK){
@@ -682,7 +667,6 @@ int mosquitto_persist_client_msg_update(void *userdata, const char *client_id, i
 		}
 	}
 	sqlite3_reset(ud->sub_update_stmt);
-	sqlite3_clear_bindings(ud->sub_update_stmt);
 
 	return rc;
 }
@@ -691,5 +675,37 @@ int mosquitto_persist_client_msg_update(void *userdata, const char *client_id, i
 int mosquitto_persist_client_msg_restore(void *userdata)
 {
 	return 0;
+}
+
+
+/* ==================================================
+ * Transactions
+ * ================================================== */
+
+int mosquitto_persist_transaction_begin(void *userdata)
+{
+	struct mosquitto_sqlite *ud = (struct mosquitto_sqlite *)userdata;
+	int rc = 1;
+
+	if(sqlite3_step(ud->transaction_begin_stmt) == SQLITE_DONE){
+		rc = 0;
+	}
+	sqlite3_reset(ud->transaction_begin_stmt);
+
+	return rc;
+}
+
+
+int mosquitto_persist_transaction_end(void *userdata)
+{
+	struct mosquitto_sqlite *ud = (struct mosquitto_sqlite *)userdata;
+	int rc = 1;
+
+	if(sqlite3_step(ud->transaction_end_stmt) == SQLITE_DONE){
+		rc = 0;
+	}
+	sqlite3_reset(ud->transaction_end_stmt);
+
+	return rc;
 }
 

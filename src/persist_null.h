@@ -51,4 +51,7 @@ int persist__client_msg_delete_null(void *userdata, const char *client_id, int m
 int persist__client_msg_update_null(void *userdata, const char *client_id, int mid, int direction, int state, int dup);
 int persist__client_msg_restore_null(void *userdata);
 
+int persist__transaction_begin_null(void *userdata);
+int persist__transaction_end_null(void *userdata);
+
 #endif
