@@ -75,7 +75,9 @@ static int create_tables(struct mosquitto_sqlite *ud)
 	rc = sqlite3_exec(ud->db,
 			"CREATE TABLE IF NOT EXISTS retained_msgs "
 			"("
-				"store_id INTEGER PRIMARY KEY"
+				"store_id INTEGER PRIMARY KEY,"
+				"FOREIGN KEY(store_id) REFERENCES msg_store(dbid) "
+				"ON DELETE CASCADE"
 			");",
 			NULL, NULL, NULL);
 	if(rc) goto error;
@@ -97,7 +99,9 @@ static int create_tables(struct mosquitto_sqlite *ud)
 			"("
 				"client_id TEXT NOT NULL,"
 				"topic TEXT NOT NULL,"
-				"qos INTEGER"
+				"qos INTEGER,"
+				"FOREIGN KEY(client_id) REFERENCES clients(client_id) "
+				"ON DELETE CASCADE"
 			");",
 			NULL, NULL, NULL);
 	if(rc) goto error;
@@ -112,7 +116,11 @@ static int create_tables(struct mosquitto_sqlite *ud)
 				"retained INTEGER,"
 				"direction INTEGER,"
 				"state INTEGER,"
-				"dup INTEGER"
+				"dup INTEGER,"
+				"FOREIGN KEY(store_id) REFERENCES msg_store(dbid)"
+				"ON DELETE CASCADE,"
+				"FOREIGN KEY(client_id) REFERENCES clients(client_id)"
+				"ON DELETE CASCADE"
 			");",
 			NULL, NULL, NULL);
 	if(rc) goto error;
