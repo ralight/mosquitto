@@ -198,6 +198,7 @@ int mosquitto_persist_plugin_init(void **userdata, struct mosquitto_plugin_opt *
 	}else{
 		rc = sqlite3_exec(ud->db, "PRAGMA journal_mode=WAL;", NULL, NULL, NULL);
 		rc = sqlite3_exec(ud->db, "PRAGMA page_size=32768;", NULL, NULL, NULL);
+		//rc = sqlite3_exec(ud->db, "PRAGMA synchronous=0;", NULL, NULL, NULL);
 
 		rc = create_tables(ud);
 		if(rc){
@@ -674,6 +675,42 @@ int mosquitto_persist_client_msg_update(void *userdata, const char *client_id, i
 
 int mosquitto_persist_client_msg_restore(void *userdata)
 {
+	struct mosquitto_sqlite *ud = (struct mosquitto_sqlite *)userdata;
+	sqlite3_stmt *stmt;
+	int rc = 1;
+	int rc2;
+
+	const char *client_id;
+	uint64_t store_id;
+	int mid;
+	int qos;
+	int retained;
+	int direction;
+	int state;
+	int dup;
+
+	rc = sqlite3_prepare_v2(ud->db,
+			"SELECT client_id,store_id,mid,qos,retained,direction,state,dup "
+			"FROM client_msgs",
+			-1, &stmt, NULL);
+	while((rc = sqlite3_step(stmt)) == SQLITE_ROW){
+		client_id = (const char *)sqlite3_column_text(stmt, 0);
+		store_id = sqlite3_column_int64(stmt, 1);
+		mid = sqlite3_column_int(stmt, 2);
+		qos = sqlite3_column_int(stmt, 3);
+		retained = sqlite3_column_int(stmt, 4);
+		direction = sqlite3_column_int(stmt, 5);
+		state = sqlite3_column_int(stmt, 6);
+		dup = sqlite3_column_int(stmt, 7);
+
+		rc2 = mosquitto_persist_client_msg_load(
+				client_id, store_id, mid,
+				qos, retained, direction,
+				state, dup);
+		if(rc2) return rc2;
+	}
+	sqlite3_finalize(stmt);
+
 	return 0;
 }
 

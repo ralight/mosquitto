@@ -4,4 +4,5 @@
 	mosquitto_persist_retain_load;
 	mosquitto_persist_client_load;
 	mosquitto_persist_subscription_load;
+	mosquitto_persist_client_msg_load;
 };

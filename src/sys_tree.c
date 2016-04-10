@@ -187,11 +187,11 @@ void sys__update(struct mosquitto_db *db, int interval, time_t start_time)
 
 	now = mosquitto_time();
 
+	if(interval && now - interval > last_update){
 #ifdef WITH_PERSISTENCE
-	persist__transaction_begin(db);
+		persist__transaction_begin(db);
 #endif
 
-	if(interval && now - interval > last_update){
 		uptime = now - start_time;
 		snprintf(buf, BUFLEN, "%d seconds", (int)uptime);
 		db__messages_easy_queue(db, NULL, "$SYS/broker/uptime", 2, strlen(buf), buf, 1);
@@ -332,10 +332,10 @@ void sys__update(struct mosquitto_db *db, int interval, time_t start_time)
 		}
 
 		last_update = mosquitto_time();
-	}
 #ifdef WITH_PERSISTENCE
-	persist__transaction_end(db);
+		persist__transaction_end(db);
 #endif
+	}
 
 }
 

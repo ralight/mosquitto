@@ -465,7 +465,7 @@ int mosquitto_persist_client_msg_load(const char *client_id, uint64_t store_id, 
 
 	HASH_FIND(hh, db->msg_store_load, &store_id, sizeof(uint64_t), load);
 	if(!load){
-		log__printf(NULL, MOSQ_LOG_ERR, "Error: Missing stored message when restoring persistent database.");
+		log__printf(NULL, MOSQ_LOG_ERR, "Error: Missing stored message (%ld) when restoring persistent database.", store_id);
 		return 1;
 	}
 

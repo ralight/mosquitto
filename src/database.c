@@ -421,7 +421,9 @@ int db__message_insert(struct mosquitto_db *db, struct mosquitto *context, uint1
 	if(state == mosq_ms_queued){
 		db->persistence_changes++;
 	}
-	/* FIXME */ persist__client_msg_add(db, context->id,  stored, mid, qos, retain, dir, state, false);
+	if(!context->clean_session){
+		/* FIXME */ persist__client_msg_add(db, context->id,  stored, mid, qos, retain, dir, state, false);
+	}
 #endif
 
 	msg = mosquitto__malloc(sizeof(struct mosquitto_client_msg));
