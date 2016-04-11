@@ -44,6 +44,7 @@ struct mosquitto_sqlite {
 	sqlite3_stmt *client_msg_update_stmt;
 	sqlite3_stmt *transaction_begin_stmt;
 	sqlite3_stmt *transaction_end_stmt;
+	int synchronous;
 };
 
 int mosquitto_persist_plugin_version(void)
@@ -195,10 +196,31 @@ int mosquitto_persist_plugin_init(void **userdata, struct mosquitto_plugin_opt *
 {
 	struct mosquitto_sqlite *ud;
 	int rc;
+	int i;
+	char buf[100];
 
 	ud = calloc(1, sizeof(struct mosquitto_sqlite));
 	if(!ud){
 		return 1;
+	}
+	ud->synchronous = 1;
+
+	for(i=0; i<opt_count; i++){
+		if(!strcmp(opts[i].key, "persist_opt_sync")){
+			if(!strcmp(opts[i].value, "extra")){
+				ud->synchronous = 3;
+			}else if(!strcmp(opts[i].value, "full")){
+				ud->synchronous = 2;
+			}else if(!strcmp(opts[i].value, "normal")){
+				ud->synchronous = 1;
+			}else if(!strcmp(opts[i].value, "off")){
+				ud->synchronous = 0;
+			}else{
+				// FIXME unknown option
+				mosquitto_log_printf(MOSQ_LOG_ERR, "Error: Invalid persist_opt_sync value '%s'.", opts[i].value);
+				return 1;
+			}
+		}
 	}
 
 	if(sqlite3_open_v2("mosquitto.sqlite3", &ud->db, SQLITE_OPEN_READWRITE|SQLITE_OPEN_CREATE, NULL) != SQLITE_OK){
@@ -206,7 +228,8 @@ int mosquitto_persist_plugin_init(void **userdata, struct mosquitto_plugin_opt *
 	}else{
 		rc = sqlite3_exec(ud->db, "PRAGMA journal_mode=WAL;", NULL, NULL, NULL);
 		rc = sqlite3_exec(ud->db, "PRAGMA page_size=32768;", NULL, NULL, NULL);
-		//rc = sqlite3_exec(ud->db, "PRAGMA synchronous=0;", NULL, NULL, NULL);
+		snprintf(buf, 100, "PRAGMA synchronous=%d;", ud->synchronous);
+		rc = sqlite3_exec(ud->db, buf, NULL, NULL, NULL);
 
 		rc = create_tables(ud);
 		if(rc){
