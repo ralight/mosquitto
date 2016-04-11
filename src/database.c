@@ -227,7 +227,9 @@ static void db__message_remove(struct mosquitto_db *db, struct mosquitto *contex
 		return;
 	}
 
+#ifdef WITH_PERSISTENCE
 	/* FIXME */ persist__client_msg_delete(db, context->id, (*msg)->mid, (*msg)->direction);
+#endif
 	if((*msg)->store){
 		db__msg_store_deref(db, &(*msg)->store);
 	}
@@ -258,24 +260,25 @@ static void db__message_remove(struct mosquitto_db *db, struct mosquitto *contex
 		if(tail->direction == mosq_md_out){
 			switch(tail->qos){
 				case 0:
-					tail->state = mosq_ms_publish_qos0;
+					db__client_msg_state_set(db, context, tail, mosq_ms_publish_qos0);
 					break;
 				case 1:
-					tail->state = mosq_ms_publish_qos1;
+					db__client_msg_state_set(db, context, tail, mosq_ms_publish_qos1);
 					break;
 				case 2:
-					tail->state = mosq_ms_publish_qos2;
+					db__client_msg_state_set(db, context, tail, mosq_ms_publish_qos2);
 					break;
 			}
 		}else{
 			if(tail->qos == 2){
-				tail->state = mosq_ms_send_pubrec;
+				db__client_msg_state_set(db, context, tail, mosq_ms_send_pubrec);
 			}
 		}
 
 		tail = tail->next;
 	}
 }
+
 
 int db__message_delete(struct mosquitto_db *db, struct mosquitto *context, uint16_t mid, enum mosquitto_msg_direction dir)
 {
@@ -288,26 +291,28 @@ int db__message_delete(struct mosquitto_db *db, struct mosquitto *context, uint1
 	tail = context->msgs;
 	while(tail){
 		msg_index++;
+
 		if(tail->state == mosq_ms_queued && msg_index <= max_inflight){
 			tail->timestamp = mosquitto_time();
 			if(tail->direction == mosq_md_out){
 				switch(tail->qos){
 					case 0:
-						tail->state = mosq_ms_publish_qos0;
+						db__client_msg_state_set(db, context, tail, mosq_ms_publish_qos0);
 						break;
 					case 1:
-						tail->state = mosq_ms_publish_qos1;
+						db__client_msg_state_set(db, context, tail, mosq_ms_publish_qos1);
 						break;
 					case 2:
-						tail->state = mosq_ms_publish_qos2;
+						db__client_msg_state_set(db, context, tail, mosq_ms_publish_qos2);
 						break;
 				}
 			}else{
 				if(tail->qos == 2){
-					tail->state = mosq_ms_wait_for_pubrel;
+					db__client_msg_state_set(db, context, tail, mosq_ms_wait_for_pubrel);
 				}
 			}
 		}
+
 		if(tail->mid == mid && tail->direction == dir){
 			msg_index--;
 			db__message_remove(db, context, &tail, last);
@@ -326,7 +331,7 @@ int db__message_delete(struct mosquitto_db *db, struct mosquitto *context, uint1
 
 int db__message_insert(struct mosquitto_db *db, struct mosquitto *context, uint16_t mid, enum mosquitto_msg_direction dir, int qos, bool retain, struct mosquitto_msg_store *stored)
 {
-	struct mosquitto_client_msg *msg;
+	struct mosquitto_client_msg *msg = NULL;
 	enum mosquitto_msg_state state = mosq_ms_invalid;
 	int rc = 0;
 	int i;
@@ -497,11 +502,8 @@ int db__message_update(struct mosquitto_db *db, struct mosquitto *context, uint1
 	tail = context->msgs;
 	while(tail){
 		if(tail->mid == mid && tail->direction == dir){
-			tail->state = state;
 			tail->timestamp = mosquitto_time();
-#ifdef WITH_PERSISTENCE
-			/* FIXME */ persist__client_msg_update(db, context->id, mid, dir, state, 0);
-#endif
+			db__client_msg_state_set(db, context, tail, state);
 			return MOSQ_ERR_SUCCESS;
 		}
 		tail = tail->next;
@@ -674,16 +676,16 @@ int db__message_reconnect_reset(struct mosquitto_db *db, struct mosquitto *conte
 			if(msg->state != mosq_ms_queued){
 				switch(msg->qos){
 					case 0:
-						msg->state = mosq_ms_publish_qos0;
+						db__client_msg_state_set(db, context, msg, mosq_ms_publish_qos0);
 						break;
 					case 1:
-						msg->state = mosq_ms_publish_qos1;
+						db__client_msg_state_set(db, context, msg, mosq_ms_publish_qos1);
 						break;
 					case 2:
 						if(msg->state == mosq_ms_wait_for_pubcomp){
-							msg->state = mosq_ms_resend_pubrel;
+							db__client_msg_state_set(db, context, msg, mosq_ms_resend_pubrel);
 						}else{
-							msg->state = mosq_ms_publish_qos2;
+							db__client_msg_state_set(db, context, msg, mosq_ms_publish_qos2);
 						}
 						break;
 				}
@@ -715,13 +717,13 @@ int db__message_reconnect_reset(struct mosquitto_db *db, struct mosquitto *conte
 			if(msg->state == mosq_ms_queued){
 				switch(msg->qos){
 					case 0:
-						msg->state = mosq_ms_publish_qos0;
+						db__client_msg_state_set(db, context, msg, mosq_ms_publish_qos0);
 						break;
 					case 1:
-						msg->state = mosq_ms_publish_qos1;
+						db__client_msg_state_set(db, context, msg, mosq_ms_publish_qos1);
 						break;
 					case 2:
-						msg->state = mosq_ms_publish_qos2;
+						db__client_msg_state_set(db, context, msg, mosq_ms_publish_qos2);
 						break;
 				}
 			}
@@ -754,22 +756,23 @@ int db__message_release(struct mosquitto_db *db, struct mosquitto *context, uint
 			if(tail->direction == mosq_md_out){
 				switch(tail->qos){
 					case 0:
-						tail->state = mosq_ms_publish_qos0;
+						db__client_msg_state_set(db, context, tail, mosq_ms_publish_qos0);
 						break;
 					case 1:
-						tail->state = mosq_ms_publish_qos1;
+						db__client_msg_state_set(db, context, tail, mosq_ms_publish_qos1);
 						break;
 					case 2:
-						tail->state = mosq_ms_publish_qos2;
+						db__client_msg_state_set(db, context, tail, mosq_ms_publish_qos2);
 						break;
 				}
 			}else{
 				if(tail->qos == 2){
 					send__pubrec(context, tail->mid);
-					tail->state = mosq_ms_wait_for_pubrel;
+					db__client_msg_state_set(db, context, tail, mosq_ms_wait_for_pubrel);
 				}
 			}
 		}
+
 		if(tail->mid == mid && tail->direction == dir){
 			qos = tail->store->qos;
 			topic = tail->store->topic;
@@ -852,7 +855,7 @@ int db__message_write(struct mosquitto_db *db, struct mosquitto *context)
 					if(!rc){
 						tail->timestamp = mosquitto_time();
 						tail->dup = 1; /* Any retry attempts are a duplicate. */
-						tail->state = mosq_ms_wait_for_puback;
+						db__client_msg_state_set(db, context, tail, mosq_ms_wait_for_puback);
 					}else{
 						return rc;
 					}
@@ -865,7 +868,7 @@ int db__message_write(struct mosquitto_db *db, struct mosquitto *context)
 					if(!rc){
 						tail->timestamp = mosquitto_time();
 						tail->dup = 1; /* Any retry attempts are a duplicate. */
-						tail->state = mosq_ms_wait_for_pubrec;
+						db__client_msg_state_set(db, context, tail, mosq_ms_wait_for_pubrec);
 					}else{
 						return rc;
 					}
@@ -876,7 +879,7 @@ int db__message_write(struct mosquitto_db *db, struct mosquitto *context)
 				case mosq_ms_send_pubrec:
 					rc = send__pubrec(context, mid);
 					if(!rc){
-						tail->state = mosq_ms_wait_for_pubrel;
+						db__client_msg_state_set(db, context, tail, mosq_ms_wait_for_pubrel);
 					}else{
 						return rc;
 					}
@@ -887,7 +890,7 @@ int db__message_write(struct mosquitto_db *db, struct mosquitto *context)
 				case mosq_ms_resend_pubrel:
 					rc = send__pubrel(context, mid);
 					if(!rc){
-						tail->state = mosq_ms_wait_for_pubcomp;
+						db__client_msg_state_set(db, context, tail, mosq_ms_wait_for_pubcomp);
 					}else{
 						return rc;
 					}
@@ -898,7 +901,7 @@ int db__message_write(struct mosquitto_db *db, struct mosquitto *context)
 				case mosq_ms_resend_pubcomp:
 					rc = send__pubcomp(context, mid);
 					if(!rc){
-						tail->state = mosq_ms_wait_for_pubrel;
+						db__client_msg_state_set(db, context, tail, mosq_ms_wait_for_pubrel);
 					}else{
 						return rc;
 					}
@@ -915,7 +918,7 @@ int db__message_write(struct mosquitto_db *db, struct mosquitto *context)
 			/* state == mosq_ms_queued */
 			if(tail->direction == mosq_md_in && (max_inflight == 0 || msg_count < max_inflight)){
 				if(tail->qos == 2){
-					tail->state = mosq_ms_send_pubrec;
+					db__client_msg_state_set(db, context, tail, mosq_ms_send_pubrec);
 				}
 			}else{
 				last = tail;
@@ -926,6 +929,20 @@ int db__message_write(struct mosquitto_db *db, struct mosquitto *context)
 
 	return MOSQ_ERR_SUCCESS;
 }
+
+
+void db__client_msg_state_set(struct mosquitto_db *db, struct mosquitto *context, struct mosquitto_client_msg *msg, int state)
+{
+	if(!msg) return;
+
+	msg->state = state;
+#ifdef WITH_PERSISTENCE
+	if(msg->qos > 0 && db->config->queue_qos0_messages == true){
+		/* FIXME */ persist__client_msg_update(db, context->id, msg->mid, msg->direction, msg->state, msg->dup);
+	}
+#endif
+}
+
 
 void db__limits_set(int inflight, int queued)
 {
