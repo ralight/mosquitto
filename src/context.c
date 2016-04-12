@@ -174,7 +174,7 @@ void context__cleanup(struct mosquitto_db *db, struct mosquitto *context, bool d
 					   CONNECT and hence wouldn't have an id. */
 
 		HASH_FIND(hh_id, db->contexts_by_id, context->id, strlen(context->id), found_context);
-		if(found_context){
+		if(found_context == context){
 			HASH_DELETE(hh_id, db->contexts_by_id, context);
 		}
 		mosquitto__free(context->id);
