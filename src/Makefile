@@ -204,6 +204,17 @@ mosquitto_passwd : mosquitto_passwd.o
 mosquitto_passwd.o : mosquitto_passwd.c
 	${CROSS_COMPILE}${CC} $(CFLAGS) ${CPPFLAGS} -c $< -o $@
 
+
+persist_builtin_convert.o : persist_builtin_convert.c persist_builtin.h mosquitto_broker.h
+	${CROSS_COMPILE}${CC} $(BROKER_CFLAGS) -c $< -o $@
+
+
+persist_convert : persist_convert.o database.o memory_mosq.o time_mosq.o persist_builtin_convert.o logging.o context.o packet_mosq.o util_mosq.o send_mosq.o net_mosq.o send_publish.o subs.o security.o security_default.o loop.o net.o conf.o sys_tree.o tls_mosq.o bridge.o will_mosq.o send_connect.o persist_plugin.o persist_null.o read_handle.o handle_pubackcomp.o handle_ping.o handle_connack.o handle_connect.o send_connack.o send_unsubscribe.o send_subscribe.o handle_unsuback.o handle_suback.o handle_unsubscribe.o handle_publish.o handle_subscribe.o send_suback.o handle_pubrel.o handle_pubrec.o persist.o
+	${CROSS_COMPILE}${CC} $^ -o $@ ${LDFLAGS} $(BROKER_LIBS)
+
+persist_convert.o : persist_convert.c
+	${CROSS_COMPILE}${CC} $(BROKER_CFLAGS) -c $< -o $@
+
 install : all
 	$(INSTALL) -d ${DESTDIR}$(prefix)/sbin
 	$(INSTALL) -s --strip-program=${CROSS_COMPILE}${STRIP} mosquitto ${DESTDIR}${prefix}/sbin/mosquitto

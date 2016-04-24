@@ -26,7 +26,7 @@ Contributors:
 
 #include <mosquitto_broker.h>
 #include <memory_mosq.h>
-#include <persist.h>
+#include <persist_builtin.h>
 
 #define mosquitto__malloc(A) malloc((A))
 #define mosquitto__free(A) free((A))
@@ -34,6 +34,20 @@ Contributors:
 #define _mosquitto_free(A) free((A))
 #include <uthash.h>
 
+#define MOSQ_DB_VERSION 3
+
+/* DB read/write */
+const unsigned char magic[15] = {0x00, 0xB5, 0x00, 'm','o','s','q','u','i','t','t','o',' ','d','b'};
+#define DB_CHUNK_CFG 1
+#define DB_CHUNK_MSG_STORE 2
+#define DB_CHUNK_CLIENT_MSG 3
+#define DB_CHUNK_RETAIN 4
+#define DB_CHUNK_SUB 5
+#define DB_CHUNK_CLIENT 6
+/* End DB read/write */
+
+#define read_e(f, b, c) if(fread(b, 1, c, f) != c){ goto error; }
+#define write_e(f, b, c) if(fwrite(b, 1, c, f) != c){ goto error; }
 
 struct client_chunk
 {

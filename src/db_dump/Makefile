@@ -9,7 +9,7 @@ all : mosquitto_db_dump
 mosquitto_db_dump : db_dump.o
 	${CROSS_COMPILE}${CC} $^ -o $@ ${LDFLAGS} ${LIBS}
 
-db_dump.o : db_dump.c ../persist.h
+db_dump.o : db_dump.c ../persist_builtin.h
 	${CROSS_COMPILE}${CC} $(CFLAGS_FINAL) -c $< -o $@
 
 clean : 

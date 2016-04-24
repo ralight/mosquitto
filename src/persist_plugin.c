@@ -215,7 +215,10 @@ int persist__plugin_init(struct mosquitto_db *db)
 
 
 	/* Initialise plugin */
-	rc = db->persist_plugin.plugin_init(&db->persist_plugin.userdata, NULL, 0); /* FIXME - options */
+	struct mosquitto_plugin_opt opt;
+	opt.key = "persist_opt_sync";
+	opt.value = "off";
+	rc = db->persist_plugin.plugin_init(&db->persist_plugin.userdata, &opt, 1); /* FIXME - options */
 	if(rc){
 		log__printf(NULL, MOSQ_LOG_ERR, "Error: Persistence plugin initialisation returned error code %d.", rc);
 		LIB_CLOSE(db->persist_plugin.lib);
@@ -595,6 +598,16 @@ int persist__client_msg_add(struct mosquitto_db *db, const char *client_id, stru
 	/* FIXME */ persist__msg_store_add(db, stored);
 	rc = db->persist_plugin.client_msg_add(
 			db->persist_plugin.userdata, client_id, stored->db_id, mid, qos, retained, direction, state, dup);
+	return rc;
+}
+
+
+int persist__client_msg_add_by_id(struct mosquitto_db *db, const char *client_id, uint64_t db_id, int mid, int qos, int retained, int direction, int state, int dup)
+{
+	int rc;
+
+	rc = db->persist_plugin.client_msg_add(
+			db->persist_plugin.userdata, client_id, db_id, mid, qos, retained, direction, state, dup);
 	return rc;
 }
 
