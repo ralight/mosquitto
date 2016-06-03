@@ -204,6 +204,9 @@ int mosquitto_persist_plugin_init(void **userdata, struct mosquitto_plugin_opt *
 		return 1;
 	}
 	ud->synchronous = 1;
+	
+	char *path = NULL; // ral? should these go inside "mosquitto_sqlite" or not? (probably? need to be freeed?)
+	char *file = "mosquitto.sqlite3";
 
 	for(i=0; i<opt_count; i++){
 		if(!strcmp(opts[i].key, "persist_opt_sync")){
@@ -221,9 +224,22 @@ int mosquitto_persist_plugin_init(void **userdata, struct mosquitto_plugin_opt *
 				return 1;
 			}
 		}
+		if (!strcmp(opts[i].key, "persist_location")) {
+			if(strlen(opts[i].value)) {
+				int len = strlen(opts[i].value) + strlen(file) + 1;
+//				path = mosquitto__malloc(len);
+				path = malloc(len);
+				if (!path) return MOSQ_ERR_NOMEM;  // not sure this is in your plugin api sorry!
+				snprintf(path, len, "%s%s", opts[i].value, file);
+			}
+		}
+	}
+	if (!path) {
+		path = file;
 	}
 
-	if(sqlite3_open_v2("mosquitto.sqlite3", &ud->db, SQLITE_OPEN_READWRITE|SQLITE_OPEN_CREATE, NULL) != SQLITE_OK){
+	mosquitto_log_printf(MOSQ_LOG_NOTICE, "operating with db: %s", path);
+	if(sqlite3_open_v2(path, &ud->db, SQLITE_OPEN_READWRITE|SQLITE_OPEN_CREATE, NULL) != SQLITE_OK){
 		/* FIXME - handle error - use options for file */
 	}else{
 		rc = sqlite3_exec(ud->db, "PRAGMA journal_mode=WAL;", NULL, NULL, NULL);

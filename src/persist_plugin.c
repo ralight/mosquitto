@@ -215,10 +215,14 @@ int persist__plugin_init(struct mosquitto_db *db)
 
 
 	/* Initialise plugin */
-	struct mosquitto_plugin_opt opt;
-	opt.key = "persist_opt_sync";
-	opt.value = "off";
-	rc = db->persist_plugin.plugin_init(&db->persist_plugin.userdata, &opt, 1); /* FIXME - options */
+	struct mosquitto_plugin_opt opts[] = {
+		{ "persist_opt_sync", "off"},
+		{ "persist_location", db->config->persistence_location},
+	};
+#ifndef ARRAY_LEN
+#define ARRAY_LEN(x) (sizeof(x)/sizeof((x)[0]))
+#endif
+	rc = db->persist_plugin.plugin_init(&db->persist_plugin.userdata, opts, ARRAY_LEN(opts)); /* FIXME - options */
 	if(rc){
 		log__printf(NULL, MOSQ_LOG_ERR, "Error: Persistence plugin initialisation returned error code %d.", rc);
 		LIB_CLOSE(db->persist_plugin.lib);
