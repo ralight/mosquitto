@@ -441,7 +441,7 @@ int mosquitto_persist_subscription_load(const char *client_id, const char *topic
 
 	HASH_FIND(hh_id, db->contexts_by_id, client_id, strlen(client_id), context);
 	if(!context){
-		log__printf(NULL, MOSQ_LOG_ERR, "Error: Missing client when restoring persistent database.");
+		log__printf(NULL, MOSQ_LOG_ERR, "Error: Missing client when restoring persistent subscription: %s", client_id);
 		return 1;
 	}
 
@@ -466,7 +466,7 @@ int mosquitto_persist_client_msg_load(const char *client_id, uint64_t store_id, 
 
 	HASH_FIND(hh_id, db->contexts_by_id, client_id, strlen(client_id), context);
 	if(!context){
-		log__printf(NULL, MOSQ_LOG_ERR, "Error: Missing client when restoring persistent database.");
+		log__printf(NULL, MOSQ_LOG_ERR, "Error: Missing client when restoring persistent msg: %s", client_id);
 		return 1;
 	}
 
@@ -578,6 +578,8 @@ int persist__sub_add(struct mosquitto_db *db, const char *client_id, const char 
 
 	rc = db->persist_plugin.sub_add(
 			db->persist_plugin.userdata, client_id, topic, qos);
+	log__printf(NULL, MOSQ_LOG_NOTICE, "Adding a subscription for client: %s, topic: %s, qos: %d to db", client_id, topic, qos);
+	
 	return rc;
 }
 
