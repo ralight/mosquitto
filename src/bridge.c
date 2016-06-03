@@ -35,6 +35,7 @@ Contributors:
 #include "net_mosq.h"
 #include "memory_mosq.h"
 #include "packet_mosq.h"
+#include "persist_plugin.h"
 #include "send_mosq.h"
 #include "time_mosq.h"
 #include "tls_mosq.h"
@@ -67,6 +68,10 @@ int bridge__new(struct mosquitto_db *db, struct mosquitto__bridge *bridge)
 		}
 		new_context->id = local_id;
 		HASH_ADD_KEYPTR(hh_id, db->contexts_by_id, new_context->id, strlen(new_context->id), new_context);
+#ifdef WITH_PERSISTENCE
+		persist__client_add(db, new_context->id, new_context->last_mid, 0);
+		db->persistence_changes++;
+#endif
 	}
 	new_context->bridge = bridge;
 	new_context->is_bridge = true;
@@ -138,6 +143,15 @@ int bridge__connect(struct mosquitto_db *db, struct mosquitto *context)
 	for(i=0; i<context->bridge->topic_count; i++){
 		if(context->bridge->topics[i].direction == bd_out || context->bridge->topics[i].direction == bd_both){
 			log__printf(NULL, MOSQ_LOG_DEBUG, "Bridge %s doing local SUBSCRIBE on topic %s", context->id, context->bridge->topics[i].local_topic);
+#ifdef WITH_PERSISTENCE
+			if(!context->clean_session){
+				rc = persist__sub_add(db, context->id, context->bridge->topics[i].local_topic, context->bridge->topics[i].qos);
+				if(rc){
+					log__printf(NULL, MOSQ_LOG_ERR, "gack, failed to persist a bridge subscription!");
+					/* FIXME */
+				}
+			}
+#endif
 			if(sub__add(db, context, context->bridge->topics[i].local_topic, context->bridge->topics[i].qos, &db->subs)) return 1;
 		}
 	}
