@@ -80,6 +80,10 @@ WITH_DOCS:=yes
 # Build with client support for SOCK5 proxy.
 WITH_SOCKS:=yes
 
+# Build the sqlite persistence plugin
+WITH_SQLITE:=yes
+
+
 # =============================================================================
 # End of user configuration
 # =============================================================================

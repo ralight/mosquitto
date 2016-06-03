@@ -2,11 +2,17 @@ include ../config.mk
 
 .PHONY: all install uninstall clean reallyclean
 
+TARGETS:=mosquitto
+
 ifeq ($(WITH_TLS),yes)
-all : mosquitto mosquitto_passwd mosquitto_persist_sqlite.so
-else
-all : mosquitto mosquitto_persist_sqlite.so
+	TARGETS:=$(TARGETS) mosquitto_passwd
 endif
+
+ifeq ($(WITH_SQLITE),yes)
+	TARGETS:=$(TARGETS) mosquitto_persist_sqlite.so
+endif
+
+all : $(TARGETS)
 
 OBJS=	mosquitto.o \
 		bridge.o \
