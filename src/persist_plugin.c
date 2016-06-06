@@ -35,7 +35,7 @@ static void sym_error(void **lib, const char *func)
 
 int persist__plugin_init(struct mosquitto_db *db)
 {
-	int (*plugin_version)(void);
+	int (*plugin_version)(int);
 	int version;
 	int rc;
 
