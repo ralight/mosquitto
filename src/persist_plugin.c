@@ -82,7 +82,7 @@ int persist__plugin_init(struct mosquitto_db *db)
 		return 1;
 	}
 
-	version = plugin_version();
+	version = plugin_version(MOSQ_PERSIST_PLUGIN_VERSION);
 	if(version != MOSQ_PERSIST_PLUGIN_VERSION){
 		log__printf(NULL, MOSQ_LOG_ERR,
 				"Error: Incorrect persistence plugin version (got %d, expected %d).",

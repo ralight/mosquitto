@@ -21,9 +21,13 @@ Contributors:
 #include "mosquitto_plugin.h"
 #include "mosquitto.h"
 
-int persist__plugin_version_null(void)
+int persist__plugin_version_null(int broker_version)
 {
-	return MOSQ_PERSIST_PLUGIN_VERSION;
+	if(broker_version <= MOSQ_PERSIST_PLUGIN_VERSION){
+		return MOSQ_PERSIST_PLUGIN_VERSION;
+	}else{
+		return -1;
+	}
 }
 
 int persist__plugin_init_null(void **userdata, struct mosquitto_plugin_opt *opts, int opt_count)

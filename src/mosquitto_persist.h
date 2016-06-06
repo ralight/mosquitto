@@ -11,7 +11,7 @@ struct mosquitto_plugin_opt{
 };
 
 
-int mosquitto_persist_plugin_version(void);
+int mosquitto_persist_plugin_version(int broker_version);
 
 int mosquitto_persist_plugin_init(void **userdata, struct mosquitto_plugin_opt *opts, int opt_count);
 int mosquitto_persist_plugin_cleanup(void *userdata, struct mosquitto_plugin_opt *opts, int opt_count);

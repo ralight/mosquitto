@@ -47,9 +47,13 @@ struct mosquitto_sqlite {
 	int synchronous;
 };
 
-int mosquitto_persist_plugin_version(void)
+int mosquitto_persist_plugin_version(int broker_version)
 {
-	return MOSQ_PERSIST_PLUGIN_VERSION;
+	if(broker_version <= MOSQ_PERSIST_PLUGIN_VERSION){
+		return MOSQ_PERSIST_PLUGIN_VERSION;
+	}else{
+		return -1;
+	}
 }
 
 static int create_tables(struct mosquitto_sqlite *ud)
