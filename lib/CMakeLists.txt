@@ -41,7 +41,7 @@ set(C_SRC
 	messages_mosq.c messages_mosq.h
 	mosquitto.c mosquitto.h
 	mosquitto_internal.h
-	mqtt3_protocol.h
+	mqtt_protocol.h
 	net_mosq.c net_mosq.h
 	packet_mosq.c packet_mosq.h
 	read_handle.c read_handle.h
