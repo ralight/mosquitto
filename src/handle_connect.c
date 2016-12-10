@@ -166,7 +166,11 @@ int handle__connect(struct mosquitto_db *db, struct mosquitto *context)
 		}
 		context->protocol = mosq_p_mqtt31;
 	}else if(!strcmp(protocol_name, PROTOCOL_NAME)){
-		if((protocol_version&0x7F) != PROTOCOL_VERSION_v311){
+		if((protocol_version&0x7F) == PROTOCOL_VERSION_v311){
+			context->protocol = mosq_p_mqtt311;
+		}else if((protocol_version&0x7F) == PROTOCOL_VERSION_v5){
+			context->protocol = mosq_p_mqtt5;
+		}else{
 			if(db->config->connection_messages == true){
 				log__printf(NULL, MOSQ_LOG_INFO, "Invalid protocol version %d in CONNECT from %s.",
 						protocol_version, context->address);
@@ -180,7 +184,6 @@ int handle__connect(struct mosquitto_db *db, struct mosquitto *context)
 			rc = MOSQ_ERR_PROTOCOL;
 			goto handle_connect_error;
 		}
-		context->protocol = mosq_p_mqtt311;
 	}else{
 		if(db->config->connection_messages == true){
 			log__printf(NULL, MOSQ_LOG_INFO, "Invalid protocol \"%s\" in CONNECT from %s.",
@@ -212,6 +215,20 @@ int handle__connect(struct mosquitto_db *db, struct mosquitto *context)
 	if(packet__read_uint16(&context->in_packet, &(context->keepalive))){
 		rc = 1;
 		goto handle_connect_error;
+	}
+
+	if(protocol_version == PROTOCOL_VERSION_v5){
+		/* FIXME */
+		uint32_t property_len;
+		if(packet__read_varint(&context->in_packet, &property_len)){
+			rc = 1;
+			goto handle_connect_error;
+		}
+		if(property_len != 0){
+			/* FIXME Temporary fudge because of no property support */
+			rc = 1;
+			goto handle_connect_error;
+		}
 	}
 
 	if(packet__read_string(&context->in_packet, &client_id)){
@@ -567,7 +584,7 @@ int handle__connect(struct mosquitto_db *db, struct mosquitto *context)
 			if(context->username){
 				log__printf(NULL, MOSQ_LOG_NOTICE, "New client connected from %s as %s (c%d, k%d, u'%s').", context->address, client_id, clean_session, context->keepalive, context->username);
 			}else{
-				log__printf(NULL, MOSQ_LOG_NOTICE, "New client connected from %s as %s (c%d, k%d).", context->address, client_id, clean_session, context->keepalive);
+				log__printf(NULL, MOSQ_LOG_NOTICE, "New client connected from %s as %s (p%d, c%d, k%d).", context->address, client_id, context->protocol, clean_session, context->keepalive);
 			}
 		}
 	}
