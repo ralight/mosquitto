@@ -262,6 +262,10 @@ struct mosquitto {
 	ares_channel achan;
 #  endif
 #endif
+	uint32_t session_expiry_interval;
+	uint32_t will_delay_interval;
+	uint16_t receive_maximum;
+	uint16_t topic_alias_maximum;
 
 #ifdef WITH_BROKER
 	UT_hash_handle hh_id;

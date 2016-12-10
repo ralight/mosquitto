@@ -224,10 +224,71 @@ int handle__connect(struct mosquitto_db *db, struct mosquitto *context)
 			rc = 1;
 			goto handle_connect_error;
 		}
-		if(property_len != 0){
-			/* FIXME Temporary fudge because of no property support */
-			rc = 1;
-			goto handle_connect_error;
+		while(property_len){
+			uint8_t property_identifier;
+
+			if(packet__read_byte(&context->in_packet, &property_identifier)){
+				rc = 1;
+				goto handle_connect_error;
+			}
+
+			switch(property_identifier){
+			case PROP_SESSION_EXPIRY_INTERVAL:
+				if(packet__read_uint32(&context->in_packet, &context->session_expiry_interval)){
+					rc = 1;
+					goto handle_connect_error;
+				}
+				break;
+
+			case PROP_AUTH_METHOD:
+				/* FIXME Unsupported */
+				rc = 1;
+				goto handle_connect_error;
+				break;
+
+			case PROP_AUTH_DATA:
+				/* FIXME Unsupported */
+				rc = 1;
+				goto handle_connect_error;
+				break;
+
+			case PROP_REQUEST_PROBLEM_INFO:
+				/* FIXME Unsupported */
+				rc = 1;
+				goto handle_connect_error;
+				break;
+
+			case PROP_WILL_DELAY_INTERVAL:
+				if(packet__read_uint32(&context->in_packet, &context->will_delay_interval)){
+					rc = 1;
+					goto handle_connect_error;
+				}
+				break;
+
+			case PROP_REQUEST_REPLY_INFO:
+				/* FIXME Unsupported */
+				rc = 1;
+				goto handle_connect_error;
+				break;
+
+			case PROP_RECEIVE_MAXIMUM:
+				if(packet__read_uint16(&context->in_packet, &context->receive_maximum)){
+					rc = 1;
+					goto handle_connect_error;
+				}
+				break;
+
+			case PROP_TOPIC_ALIAS_MAXIMUM:
+				if(packet__read_uint16(&context->in_packet, &context->topic_alias_maximum)){
+					rc = 1;
+					goto handle_connect_error;
+				}
+				break;
+
+			default:
+				rc = 1;
+				goto handle_connect_error;
+			}
 		}
 	}
 
