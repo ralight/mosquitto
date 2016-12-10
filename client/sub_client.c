@@ -435,7 +435,7 @@ void print_usage(void)
 	printf("      mqtt(s)://[username[:password]@]host[:port]/topic\n");
 	printf(" -N : do not add an end of line character when printing the payload.\n");
 	printf(" -p : network port to connect to. Defaults to 1883 for plain MQTT and 8883 for MQTT over TLS.\n");
-	printf(" -P : provide a password (requires MQTT 3.1 broker)\n");
+	printf(" -P : provide a password\n");
 	printf(" -q : quality of service level to use for the subscription. Defaults to 0.\n");
 	printf(" -R : do not print stale messages (those with retain set).\n");
 #ifdef WITH_SRV
@@ -443,11 +443,11 @@ void print_usage(void)
 #endif
 	printf(" -t : mqtt topic to subscribe to. May be repeated multiple times.\n");
 	printf(" -T : topic string to filter out of results. May be repeated.\n");
-	printf(" -u : provide a username (requires MQTT 3.1 broker)\n");
+	printf(" -u : provide a username\n");
 	printf(" -U : unsubscribe from a topic. May be repeated.\n");
 	printf(" -v : print published messages verbosely.\n");
 	printf(" -V : specify the version of the MQTT protocol to use when connecting.\n");
-	printf("      Can be mqttv31 or mqttv311. Defaults to mqttv31.\n");
+	printf("      Can be mqttv5, mqttv311 or mqttv31. Defaults to mqttv311.\n");
 	printf(" --help : display this message.\n");
 	printf(" --quiet : don't print error messages.\n");
 	printf(" --retained-only : only handle messages with the retained flag set, and exit when the\n");

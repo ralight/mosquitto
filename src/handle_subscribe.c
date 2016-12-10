@@ -41,7 +41,7 @@ int handle__subscribe(struct mosquitto_db *db, struct mosquitto *context)
 	log__printf(NULL, MOSQ_LOG_DEBUG, "Received SUBSCRIBE from %s", context->id);
 	/* FIXME - plenty of potential for memory leaks here */
 
-	if(context->protocol == mosq_p_mqtt311){
+	if(context->protocol != mosq_p_mqtt31){
 		if((context->in_packet.command&0x0F) != 0x02){
 			return MOSQ_ERR_PROTOCOL;
 		}
@@ -123,7 +123,7 @@ int handle__subscribe(struct mosquitto_db *db, struct mosquitto *context)
 			 * This should be changed to using MOSQ_ACL_SUBSCRIPTION in the
 			 * future anyway.
 			 */
-			if(context->protocol == mosq_p_mqtt311){
+			if(context->protocol != mosq_p_mqtt31){
 				rc = mosquitto_acl_check(db, context, sub, MOSQ_ACL_READ);
 				switch(rc){
 					case MOSQ_ERR_SUCCESS:
@@ -162,7 +162,7 @@ int handle__subscribe(struct mosquitto_db *db, struct mosquitto *context)
 		}
 	}
 
-	if(context->protocol == mosq_p_mqtt311){
+	if(context->protocol != mosq_p_mqtt31){
 		if(payloadlen == 0){
 			/* No subscriptions specified, protocol error. */
 			return MOSQ_ERR_PROTOCOL;
