@@ -34,7 +34,7 @@ Contributors:
 #include "util_mosq.h"
 #include "will_mosq.h"
 
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 #  include <libwebsockets.h>
 #endif
 

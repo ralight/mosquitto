@@ -87,7 +87,7 @@ static int listeners__start_single_mqtt(struct mosquitto__listener *listener)
 }
 
 
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 void listeners__add_websockets(struct lws_context *ws_context, mosq_sock_t fd)
 {
 	int i;
@@ -214,10 +214,18 @@ int listeners__start(void)
 				return 1;
 			}
 		}else if(db.config->listeners[i].protocol == mp_websockets){
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 			mosq_websockets_init(&db.config->listeners[i], db.config);
 			if(!db.config->listeners[i].ws_context){
 				log__printf(NULL, MOSQ_LOG_ERR, "Error: Unable to create websockets listener on port %d.", db.config->listeners[i].port);
+				return 1;
+			}
+#elif WITH_WEBSOCKETS == WS_IS_WSLAY
+			if(listeners__start_single_mqtt(&db.config->listeners[i])){
+				db__close();
+				if(db.config->pid_file){
+					(void)remove(db.config->pid_file);
+				}
 				return 1;
 			}
 #endif
@@ -236,7 +244,7 @@ void listeners__stop(void)
 	int i;
 
 	for(i=0; i<db.config->listener_count; i++){
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 		if(db.config->listeners[i].ws_context){
 			lws_context_destroy(db.config->listeners[i].ws_context);
 		}

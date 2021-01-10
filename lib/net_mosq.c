@@ -63,7 +63,7 @@ Contributors:
 
 #ifdef WITH_BROKER
 #  include "mosquitto_broker_internal.h"
-#  ifdef WITH_WEBSOCKETS
+#  if WITH_WEBSOCKETS == WS_IS_LWS
 #    include <libwebsockets.h>
 #  endif
 #else
@@ -200,7 +200,7 @@ void net__init_tls(void)
 
 bool net__is_connected(struct mosquitto *mosq)
 {
-#if defined(WITH_BROKER) && defined(WITH_WEBSOCKETS)
+#if defined(WITH_BROKER) && WITH_WEBSOCKETS == WS_IS_LWS
 	return mosq->sock != INVALID_SOCKET || mosq->wsi != NULL;
 #else
 	return mosq->sock != INVALID_SOCKET;
@@ -221,7 +221,7 @@ int net__socket_close(struct mosquitto *mosq)
 
 	assert(mosq);
 #ifdef WITH_TLS
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 	if(!mosq->wsi)
 #endif
 	{
@@ -235,7 +235,7 @@ int net__socket_close(struct mosquitto *mosq)
 	}
 #endif
 
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 	if(mosq->wsi)
 	{
 		if(mosq->state != mosq_cs_disconnecting){

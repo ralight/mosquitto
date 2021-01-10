@@ -42,7 +42,7 @@ Contributors:
 #include <time.h>
 #include <utlist.h>
 
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 #  include <libwebsockets.h>
 #endif
 
@@ -62,7 +62,7 @@ extern bool flag_db_backup;
 extern bool flag_tree_print;
 extern int g_run;
 
-#if defined(WITH_WEBSOCKETS) && LWS_LIBRARY_VERSION_NUMBER == 3002000
+#if WITH_WEBSOCKETS == WS_IS_WEBSOCKETS && LWS_LIBRARY_VERSION_NUMBER == 3002000
 void lws__sul_callback(struct lws_sorted_usec_list *l)
 {
 }
@@ -166,13 +166,13 @@ int mosquitto_main_loop(struct mosquitto__listener_sock *listensock, int listens
 #ifdef WITH_PERSISTENCE
 	time_t last_backup = mosquitto_time();
 #endif
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 	int i;
 #endif
 	int rc;
 
 
-#if defined(WITH_WEBSOCKETS) && LWS_LIBRARY_VERSION_NUMBER == 3002000
+#if WITH_WEBSOCKETS == WS_IS_WEBSOCKETS && LWS_LIBRARY_VERSION_NUMBER == 3002000
 	memset(&sul, 0, sizeof(struct lws_sorted_usec_list));
 #endif
 
@@ -247,7 +247,7 @@ int mosquitto_main_loop(struct mosquitto__listener_sock *listensock, int listens
 			xtreport();
 #endif
 		}
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 		for(i=0; i<db.config->listener_count; i++){
 			/* Extremely hacky, should be using the lws provided external poll
 			 * interface, but their interface has changed recently and ours
@@ -277,14 +277,14 @@ int mosquitto_main_loop(struct mosquitto__listener_sock *listensock, int listens
 void do_disconnect(struct mosquitto *context, int reason)
 {
 	const char *id;
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 	bool is_duplicate = false;
 #endif
 
 	if(context->state == mosq_cs_disconnected){
 		return;
 	}
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 	if(context->wsi){
 		if(context->state == mosq_cs_duplicate){
 			is_duplicate = true;

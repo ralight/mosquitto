@@ -168,6 +168,15 @@ void context__cleanup(struct mosquitto *context, bool force_free)
 		mosquitto__free(context->adns);
 	}
 #endif
+
+#if WITH_WEBSOCKETS == WS_IS_WSLAY
+	mosquitto__free(context->http_request);
+	context->http_request = NULL;
+	if(context->ws_ctx){
+		wslay_event_context_free(context->ws_ctx);
+		context->ws_ctx = NULL;
+	}
+#endif
 	if(force_free){
 		mosquitto__free(context);
 	}
@@ -254,14 +263,14 @@ void context__add_to_disused(struct mosquitto *context)
 void context__free_disused(void)
 {
 	struct mosquitto *context, *next;
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 	struct mosquitto *last = NULL;
 #endif
 
 	context = db.ll_for_free;
 	db.ll_for_free = NULL;
 	while(context){
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 		if(context->wsi){
 			/* Don't delete yet, lws hasn't finished with it */
 			if(last){

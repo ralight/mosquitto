@@ -24,8 +24,10 @@ Contributors:
 
 #ifdef WITH_BROKER
 #  include "mosquitto_broker_internal.h"
-#  ifdef WITH_WEBSOCKETS
+#  if WITH_WEBSOCKETS == WS_IS_LWS
 #    include <libwebsockets.h>
+#  elif WITH_WEBSOCKETS == WS_IS_WSLAY
+#    include <wslay/wslay.h>
 #  endif
 #else
 #  include "read_handle.h"
@@ -141,36 +143,62 @@ void packet__cleanup_all(struct mosquitto *mosq)
 
 int packet__queue(struct mosquitto *mosq, struct mosquitto__packet *packet)
 {
-#ifndef WITH_BROKER
+#ifdef WITH_BROKER
+#  if WITH_WEBSOCKETS == WS_IS_WSLAY
+	struct wslay_event_msg msgarg;
+#  endif
+#else
 	char sockpair_data = 0;
 #endif
 	assert(mosq);
 	assert(packet);
 
-	packet->pos = 0;
-	packet->to_process = packet->packet_length;
-
-	packet->next = NULL;
-	pthread_mutex_lock(&mosq->out_packet_mutex);
-	if(mosq->out_packet){
-		mosq->out_packet_last->next = packet;
-	}else{
-		mosq->out_packet = packet;
-	}
-	mosq->out_packet_last = packet;
-	mosq->out_packet_count++;
-	pthread_mutex_unlock(&mosq->out_packet_mutex);
 #ifdef WITH_BROKER
-#  ifdef WITH_WEBSOCKETS
+#  if WITH_WEBSOCKETS == WS_IS_LWS
 	if(mosq->wsi){
+		packet->pos = 0;
+		packet->to_process = packet->packet_length;
+
+		packet->next = NULL;
+		pthread_mutex_lock(&mosq->out_packet_mutex);
+		if(mosq->out_packet){
+			mosq->out_packet_last->next = packet;
+		}else{
+			mosq->out_packet = packet;
+		}
+		mosq->out_packet_last = packet;
+		pthread_mutex_unlock(&mosq->out_packet_mutex);
+
 		lws_callback_on_writable(mosq->wsi);
 		return MOSQ_ERR_SUCCESS;
-	}else{
+	}else
+#  elif WITH_WEBSOCKETS == WS_IS_WSLAY
+	if(mosq->ws_ctx){
+		msgarg.opcode = WSLAY_BINARY_FRAME;
+		msgarg.msg = packet->payload;
+		msgarg.msg_length = packet->packet_length;
+		wslay_event_queue_msg(mosq->ws_ctx, &msgarg);
+		mosquitto__free(packet->payload);
+		mosquitto__free(packet);
+		return MOSQ_ERR_SUCCESS;
+	}else
+#  endif
+	{
+		packet->pos = 0;
+		packet->to_process = packet->packet_length;
+
+		packet->next = NULL;
+		pthread_mutex_lock(&mosq->out_packet_mutex);
+		if(mosq->out_packet){
+			mosq->out_packet_last->next = packet;
+		}else{
+			mosq->out_packet = packet;
+		}
+		mosq->out_packet_last = packet;
+		pthread_mutex_unlock(&mosq->out_packet_mutex);
+
 		return packet__write(mosq);
 	}
-#  else
-	return packet__write(mosq);
-#  endif
 #else
 
 	/* Write a single byte to sockpairW (connected to sockpairR) to break out

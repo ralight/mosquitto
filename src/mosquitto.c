@@ -47,7 +47,7 @@ Contributors:
 #ifdef WITH_WRAP
 #include <tcpd.h>
 #endif
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 #  include <libwebsockets.h>
 #endif
 
@@ -381,7 +381,7 @@ int main(int argc, char *argv[])
 	listeners__stop();
 
 	HASH_ITER(hh_id, db.contexts_by_id, ctxt, ctxt_tmp){
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 		if(!ctxt->wsi)
 #endif
 		{

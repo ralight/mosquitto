@@ -207,6 +207,9 @@ static void config__init_reload(struct mosquitto__config *config)
 	config->set_tcp_nodelay = false;
 	config->sys_interval = 10;
 	config->upgrade_outgoing_qos = false;
+#ifdef WITH_WEBSOCKETS
+	config->websockets_headers_size = 4096;
+#endif
 
 	config__cleanup_plugins(config);
 }
@@ -287,7 +290,7 @@ void config__cleanup(struct mosquitto__config *config)
 			mosquitto__free(config->listeners[i].tls_version);
 			mosquitto__free(config->listeners[i].tls_engine);
 			mosquitto__free(config->listeners[i].tls_engine_kpass_sha1);
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 			if(!config->listeners[i].ws_context) /* libwebsockets frees its own SSL_CTX */
 #endif
 			{
@@ -622,7 +625,7 @@ static void config__copy(struct mosquitto__config *src, struct mosquitto__config
 	dest->sys_interval = src->sys_interval;
 	dest->upgrade_outgoing_qos = src->upgrade_outgoing_qos;
 
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 	dest->websockets_log_level = src->websockets_log_level;
 #endif
 
@@ -2283,10 +2286,8 @@ static int config__read_file_core(struct mosquitto__config *config, bool reload,
 					log__printf(NULL, MOSQ_LOG_WARNING, "Warning: Bridge support not available.");
 #endif
 				}else if(!strcmp(token, "websockets_log_level")){
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 					if(conf__parse_int(&token, "websockets_log_level", &config->websockets_log_level, &saveptr)) return MOSQ_ERR_INVAL;
-#else
-					log__printf(NULL, MOSQ_LOG_WARNING, "Warning: Websockets support not available.");
 #endif
 				}else if(!strcmp(token, "websockets_headers_size")){
 #ifdef WITH_WEBSOCKETS

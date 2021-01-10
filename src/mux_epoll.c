@@ -178,7 +178,7 @@ int mux_epoll__handle(void)
 					while((context = net__socket_accept(listensock)) != NULL){
 					}
 				}
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 			}else if(context->ident == id_listener_ws){
 				/* Nothing needs to happen here, because we always call lws_service in the loop.
 				 * The important point is we've been woken up for this listener. */
@@ -208,7 +208,7 @@ static void loop_handle_reads_writes(struct mosquitto *context, uint32_t events)
 		return;
 	}
 
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 	if(context->wsi){
 		struct lws_pollfd wspoll;
 		wspoll.fd = context->sock;
@@ -242,7 +242,22 @@ static void loop_handle_reads_writes(struct mosquitto *context, uint32_t events)
 				return;
 			}
 		}
-		rc = packet__write(context);
+		switch(context->transport){
+			case mosq_t_tcp:
+				rc = packet__write(context);
+				break;
+#if WITH_WEBSOCKETS == WS_IS_WSLAY
+			case mosq_t_ws:
+				rc = ws__write(context);
+				break;
+			case mosq_t_http:
+				rc = http__write(context);
+				break;
+#endif
+			default:
+				rc = MOSQ_ERR_INVAL;
+				break;
+		}
 		if(rc){
 			do_disconnect(context, rc);
 			return;
@@ -256,7 +271,22 @@ static void loop_handle_reads_writes(struct mosquitto *context, uint32_t events)
 			){
 
 		do{
-			rc = packet__read(context);
+			switch(context->transport){
+				case mosq_t_tcp:
+					rc = packet__read(context);
+					break;
+#if WITH_WEBSOCKETS == WS_IS_WSLAY
+				case mosq_t_ws:
+					rc = ws__read(context);
+					break;
+				case mosq_t_http:
+					rc = http__read(context);
+					break;
+#endif
+				default:
+					rc = MOSQ_ERR_INVAL;
+					break;
+			}
 			if(rc){
 				do_disconnect(context, rc);
 				return;

@@ -67,7 +67,10 @@ WITH_SYSTEMD:=no
 WITH_SRV:=no
 
 # Build with websockets support on the broker.
-WITH_WEBSOCKETS:=no
+# Set to yes to build with new websockets support
+# Set to lws to build with old libwebsockets code
+# Set to no to disable
+WITH_WEBSOCKETS:=yes
 
 # Use elliptic keys in broker
 WITH_EC:=yes
@@ -329,12 +332,17 @@ ifeq ($(WITH_UNIX_SOCKETS),yes)
 endif
 
 ifeq ($(WITH_WEBSOCKETS),yes)
-	BROKER_CPPFLAGS:=$(BROKER_CPPFLAGS) -DWITH_WEBSOCKETS
+	BROKER_CPPFLAGS:=$(BROKER_CPPFLAGS) -DWITH_WEBSOCKETS=WS_IS_WSLAY -I../deps/picohttpparser
+	BROKER_LDADD:=$(BROKER_LDADD) -lwslay
+endif
+
+ifeq ($(WITH_WEBSOCKETS),lws)
+	BROKER_CPPFLAGS:=$(BROKER_CPPFLAGS) -DWITH_WEBSOCKETS=WS_IS_LWS
 	BROKER_LDADD:=$(BROKER_LDADD) -lwebsockets
 endif
 
 ifeq ($(WITH_WEBSOCKETS),static)
-	BROKER_CPPFLAGS:=$(BROKER_CPPFLAGS) -DWITH_WEBSOCKETS
+	BROKER_CPPFLAGS:=$(BROKER_CPPFLAGS) -DWITH_WEBSOCKET=WS_IS_LWS
 	BROKER_LDADD:=$(BROKER_LDADD) -static -lwebsockets
 endif
 

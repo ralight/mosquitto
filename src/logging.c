@@ -264,7 +264,7 @@ static int log__vprintf(unsigned int priority, const char *fmt, va_list va)
 				syslog_priority = EVENTLOG_INFORMATION_TYPE;
 #endif
 				break;
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 			case MOSQ_LOG_WEBSOCKETS:
 				topic = "$SYS/broker/log/WS";
 #ifndef WIN32

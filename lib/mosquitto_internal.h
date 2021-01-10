@@ -39,6 +39,10 @@ Contributors:
 #  include <dummypthread.h>
 #endif
 
+#if defined(WITH_BROKER) && WITH_WEBSOCKETS == WS_IS_WSLAY
+#  include <wslay/wslay.h>
+#endif
+
 #ifdef WITH_SRV
 #  include <ares.h>
 #endif
@@ -135,7 +139,8 @@ enum mosquitto__transport {
 	mosq_t_invalid = 0,
 	mosq_t_tcp = 1,
 	mosq_t_ws = 2,
-	mosq_t_sctp = 3
+	mosq_t_sctp = 3,
+	mosq_t_http = 4, /* not valid for MQTT, just as a ws precursor */
 };
 
 /* Alias direction - local <-> remote */
@@ -240,6 +245,7 @@ struct mosquitto {
 	uint16_t keepalive;
 	uint16_t last_mid;
 	enum mosquitto_client_state state;
+	uint8_t transport;
 	time_t last_msg_in;
 	time_t next_msg_out;
 	time_t ping_t;
@@ -311,7 +317,12 @@ struct mosquitto {
 	int pollfd_index;
 #  endif
 #  ifdef WITH_WEBSOCKETS
+#    if WITH_WEBSOCKETS == WS_IS_LWS
 	struct lws *wsi;
+#    elif WITH_WEBSOCKETS == WS_IS_WSLAY
+	wslay_event_context_ptr ws_ctx;
+#    endif
+	char *http_request;
 #  endif
 	bool assigned_id;
 #else

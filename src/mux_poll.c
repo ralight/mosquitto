@@ -43,7 +43,7 @@ Contributors:
 #endif
 #include <time.h>
 
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 #  include <libwebsockets.h>
 #endif
 
@@ -239,7 +239,7 @@ int mux_poll__handle(struct mosquitto__listener_sock *listensock, int listensock
 
 		for(i=0; i<listensock_count; i++){
 			if(pollfds[i].revents & POLLIN){
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 				if(listensock[i].listener->ws_context){
 					/* Nothing needs to happen here, because we always call lws_service in the loop.
 					 * The important point is we've been woken up for this listener. */
@@ -283,7 +283,7 @@ static void loop_handle_reads_writes(void)
 
 		assert(pollfds[context->pollfd_index].fd == context->sock);
 
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 		if(context->wsi){
 			struct lws_pollfd wspoll;
 			wspoll.fd = pollfds[context->pollfd_index].fd;
@@ -330,7 +330,7 @@ static void loop_handle_reads_writes(void)
 		if(context->pollfd_index < 0){
 			continue;
 		}
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 		if(context->wsi){
 			// Websocket are already handled above
 			continue;

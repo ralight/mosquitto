@@ -197,6 +197,23 @@ struct mosquitto *net__socket_accept(struct mosquitto__listener_sock *listensock
 	}
 	new_context->listener->client_count++;
 
+	switch(new_context->listener->protocol){
+		case mp_mqtt:
+			new_context->transport = mosq_t_tcp;
+			break;
+#if WITH_WEBSOCKETS == WS_IS_WSLAY
+		case mp_websockets:
+			if(http__context_init(new_context)){
+				context__cleanup(new_context, true);
+				return NULL;
+			}
+			break;
+#endif
+		default:
+			context__cleanup(new_context, true);
+			return NULL;
+	}
+
 	if(new_context->listener->max_connections > 0 && new_context->listener->client_count > new_context->listener->max_connections){
 		if(db.config->connection_messages == true){
 			log__printf(NULL, MOSQ_LOG_NOTICE, "Client connection from %s denied: max_connections exceeded.", new_context->address);

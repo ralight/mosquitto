@@ -19,6 +19,7 @@ set (MOSQ_SRCS
 	handle_subscribe.c
 	../lib/handle_unsuback.c
 	handle_unsubscribe.c
+	http_mosq.c
 	keepalive.c
 	lib_load.h
 	listeners.c

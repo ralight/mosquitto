@@ -26,6 +26,7 @@ OBJS=	mosquitto.o \
 		handle_subscribe.o \
 		handle_unsuback.o \
 		handle_unsubscribe.o \
+		http_mosq.o \
 		keepalive.o \
 		listeners.o \
 		logging.o \
@@ -50,6 +51,7 @@ OBJS=	mosquitto.o \
 		persist_read_v5.o \
 		persist_write.o \
 		persist_write_v5.o \
+		picohttpparser.o \
 		plugin.o \
 		plugin_public.o \
 		read_handle.o \
@@ -152,6 +154,9 @@ handle_unsuback.o : ../lib/handle_unsuback.c ../lib/read_handle.h
 handle_unsubscribe.o : handle_unsubscribe.c mosquitto_broker_internal.h
 	${CROSS_COMPILE}${CC} $(BROKER_CPPFLAGS) $(BROKER_CFLAGS) -c $< -o $@
 
+http_mosq.o : http_mosq.c mosquitto_broker_internal.h
+	${CROSS_COMPILE}${CC} $(BROKER_CPPFLAGS) $(BROKER_CFLAGS) -c $< -o $@
+
 keepalive.o : keepalive.c mosquitto_broker_internal.h
 	${CROSS_COMPILE}${CC} $(BROKER_CPPFLAGS) $(BROKER_CFLAGS) -c $< -o $@
 
@@ -216,6 +221,9 @@ packet_datatypes.o : ../lib/packet_datatypes.c ../lib/packet_mosq.h
 	${CROSS_COMPILE}${CC} $(BROKER_CPPFLAGS) $(BROKER_CFLAGS) -c $< -o $@
 
 packet_mosq.o : ../lib/packet_mosq.c ../lib/packet_mosq.h
+	${CROSS_COMPILE}${CC} $(BROKER_CPPFLAGS) $(BROKER_CFLAGS) -c $< -o $@
+
+picohttpparser.o : ../deps/picohttpparser/picohttpparser.c ../deps/picohttpparser/picohttpparser.h
 	${CROSS_COMPILE}${CC} $(BROKER_CPPFLAGS) $(BROKER_CFLAGS) -c $< -o $@
 
 property_broker.o : property_broker.c mosquitto_broker_internal.h

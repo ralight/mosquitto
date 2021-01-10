@@ -57,7 +57,7 @@ Contributors:
 #include "tls_mosq.h"
 #include "util_mosq.h"
 
-#ifdef WITH_WEBSOCKETS
+#if WITH_WEBSOCKETS == WS_IS_LWS
 #include <libwebsockets.h>
 #endif
 

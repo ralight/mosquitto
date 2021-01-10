@@ -20,7 +20,11 @@ Contributors:
 
 #include "config.h"
 
-#include <libwebsockets.h>
+#if WITH_WEBSOCKETS == WS_IS_LWS
+#  include <libwebsockets.h>
+#elif WITH_WEBSOCKETS == WS_IS_WSLAY
+#  include <wslay/wslay.h>
+#endif
 #include "mosquitto_internal.h"
 #include "mosquitto_broker_internal.h"
 #include "mqtt_protocol.h"
@@ -37,6 +41,7 @@ Contributors:
 #  include <sys/socket.h>
 #endif
 
+#if WITH_WEBSOCKETS == WS_IS_LWS
 /* Be careful if changing these, if TX is not bigger than SERV then there can
  * be very large write performance penalties.
  */
@@ -175,7 +180,7 @@ static int callback_mqtt(
 			}
 			mosq->sock = lws_get_socket_fd(wsi);
 			HASH_ADD(hh_sock, db.contexts_by_sock, sock, sizeof(mosq->sock), mosq);
-			mux__add_in(mosq);
+			mux__new(mosq);
 			break;
 
 		case LWS_CALLBACK_CLOSED:
@@ -258,7 +263,6 @@ static int callback_mqtt(
 #endif
 
 				packet__get_next_out(mosq);
-				packet__cleanup(packet);
 				mosquitto__free(packet);
 
 				mosq->next_msg_out = db.now_s + mosq->keepalive;
@@ -724,5 +728,191 @@ void mosq_websockets_init(struct mosquitto__listener *listener, const struct mos
 	listener->ws_in_init = false;
 }
 
+#endif
+
+#if WITH_WEBSOCKETS == WS_IS_WSLAY
+ssize_t recv_callback(wslay_event_context_ptr ctx, uint8_t *buf, size_t len, int flags, void *user_data)
+{
+	ssize_t rc;
+	struct mosquitto *context = user_data;
+
+	UNUSED(flags);
+
+	rc = net__read(context, buf, len);
+	if(rc <= 0) {
+		if(errno == EAGAIN || errno == COMPAT_EWOULDBLOCK) {
+			wslay_event_set_error(ctx, WSLAY_ERR_WOULDBLOCK);
+		} else {
+			wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
+			do_disconnect(context, 1);
+		}
+	}
+	return rc;
+}
+
+
+ssize_t send_callback(wslay_event_context_ptr ctx, const uint8_t *buf, size_t len, int flags, void *user_data)
+{
+	ssize_t rc;
+	struct mosquitto *context = user_data;
+
+	UNUSED(flags);
+
+	rc = net__write(context, buf, len);
+	if(rc <= 0) {
+		if(errno == EAGAIN || errno == COMPAT_EWOULDBLOCK) {
+			wslay_event_set_error(ctx, WSLAY_ERR_WOULDBLOCK);
+		} else {
+			wslay_event_set_error(ctx, WSLAY_ERR_CALLBACK_FAILURE);
+		}
+	}
+	return rc;
+}
+
+
+void on_frame_recv_chunk_callback(wslay_event_context_ptr ctx, const struct wslay_event_on_frame_recv_chunk_arg *arg, void *user_data)
+{
+	/* arg: {
+	 * const uint8_t *data;
+	 * size_t data_length;
+	 * }
+	 */
+	struct mosquitto *mosq = user_data;
+	int rc;
+	uint8_t byte;
+	size_t pos;
+
+	UNUSED(ctx);
+
+	pos = 0;
+	G_BYTES_RECEIVED_INC(arg->data_length);
+	while(pos < arg->data_length){
+		if(!mosq->in_packet.command){
+			mosq->in_packet.command = arg->data[pos];
+			pos++;
+			/* Clients must send CONNECT as their first command. */
+			if(mosq->state == mosq_cs_new && (mosq->in_packet.command&0xF0) != CMD_CONNECT){
+				// FIXME return -1;
+				return;
+			}
+		}
+		if(mosq->in_packet.remaining_count <= 0){
+			do{
+				if(pos == arg->data_length){
+					// FIXME return 0;
+					return;
+				}
+				byte = arg->data[pos];
+				pos++;
+
+				mosq->in_packet.remaining_count--;
+				/* Max 4 bytes length for remaining length as defined by protocol.
+				* Anything more likely means a broken/malicious client.
+				*/
+				if(mosq->in_packet.remaining_count < -4){
+					// FIXME return -1;
+					return;
+				}
+
+				mosq->in_packet.remaining_length += (byte & 127) * mosq->in_packet.remaining_mult;
+				mosq->in_packet.remaining_mult *= 128;
+			}while((byte & 128) != 0);
+			mosq->in_packet.remaining_count = (int8_t)(mosq->in_packet.remaining_count * -1);
+
+			if(mosq->in_packet.remaining_length > 0){
+				mosq->in_packet.payload = mosquitto__malloc(mosq->in_packet.remaining_length*sizeof(uint8_t));
+				if(!mosq->in_packet.payload){
+					// FIXME return -1;
+					return;
+				}
+				mosq->in_packet.to_process = mosq->in_packet.remaining_length;
+			}
+		}
+		if(mosq->in_packet.to_process>0){
+			if((uint32_t)arg->data_length - pos >= mosq->in_packet.to_process){
+				memcpy(&mosq->in_packet.payload[mosq->in_packet.pos], &arg->data[pos], mosq->in_packet.to_process);
+				mosq->in_packet.pos += mosq->in_packet.to_process;
+				pos += mosq->in_packet.to_process;
+				mosq->in_packet.to_process = 0;
+			}else{
+				memcpy(&mosq->in_packet.payload[mosq->in_packet.pos], &arg->data[pos], arg->data_length-pos);
+				mosq->in_packet.pos += (uint32_t)(arg->data_length-pos);
+				mosq->in_packet.to_process -= (uint32_t)(arg->data_length-pos);
+				// FIXME return 0;
+				return;
+			}
+		}
+		/* All data for this packet is read. */
+		mosq->in_packet.pos = 0;
+
+#ifdef WITH_SYS_TREE
+		G_MSGS_RECEIVED_INC(1);
+		if(((mosq->in_packet.command)&0xF5) == CMD_PUBLISH){
+			G_PUB_MSGS_RECEIVED_INC(1);
+		}
+#endif
+		rc = handle__packet(mosq);
+
+		/* Free data and reset values */
+		packet__cleanup(&mosq->in_packet);
+
+		keepalive__update(mosq);
+
+		if(rc && (mosq->out_packet)){
+			if(mosq->state != mosq_cs_disconnecting){
+				mosquitto__set_state(mosq, mosq_cs_disconnect_ws);
+			}
+		} else if (rc) {
+			do_disconnect(mosq, rc);
+			// FIXME return -1;
+			return;
+		}
+	}
+}
+
+
+#if WITH_WEBSOCKETS == WS_IS_WSLAY
+static struct wslay_event_callbacks ws_callbacks = {
+	recv_callback,
+	send_callback,
+	NULL, /* genmask_callback */
+	NULL, /* on_frame_recv_start_callback */
+	on_frame_recv_chunk_callback, /* on_frame_recv_callback */
+	NULL, /* on_frame_recv_end_callback */
+	NULL, /* on_msg_recv_callback */
+};
+
+void ws__context_init(struct mosquitto *context)
+{
+	wslay_event_context_server_init(&context->ws_ctx, &ws_callbacks, context);
+	wslay_event_config_set_no_buffering(context->ws_ctx, 1);
+	context->transport = mosq_t_ws;
+	context->state = mosq_cs_new;
+}
+
+int ws__read(struct mosquitto *context)
+{
+	wslay_event_recv(context->ws_ctx);
+	if(wslay_event_want_write(context->ws_ctx)){
+		mux__add_out(context);
+	}else{
+		mux__remove_out(context);
+	}
+	return MOSQ_ERR_SUCCESS;
+}
+
+
+int ws__write(struct mosquitto *context)
+{
+	wslay_event_send(context->ws_ctx);
+	if(wslay_event_want_write(context->ws_ctx)){
+		mux__add_out(context);
+	}else{
+		mux__remove_out(context);
+	}
+	return MOSQ_ERR_SUCCESS;
+}
+#endif
+#endif
 
 #endif
