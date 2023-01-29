@@ -60,6 +60,7 @@ man/mqtt.7
 out/
 
 src/mosquitto
+src/mosquitto_broker.a
 
 test/broker/broker.pid
 test/test_client

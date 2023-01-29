@@ -296,7 +296,11 @@ static void report_features(void)
 }
 
 
+#ifdef WITH_FUZZING
+int mosquitto_fuzz_main(int argc, char *argv[])
+#else
 int main(int argc, char *argv[])
+#endif
 {
 	struct mosquitto__config config;
 	int rc;
