@@ -65,13 +65,16 @@ mosquitto :
 ifeq ($(UNAME),Darwin)
 	$(error Please compile using CMake on Mac OS X)
 endif
-
 	set -e; for d in ${DIRS}; do $(MAKE) -C $${d}; done
+
+fuzzing : mosquitto
+	$(MAKE) -C fuzzing
 
 clean :
 	set -e; for d in ${DIRS}; do $(MAKE) -C $${d} clean; done
 	set -e; for d in ${DOCDIRS}; do $(MAKE) -C $${d} clean; done
 	$(MAKE) -C test clean
+	$(MAKE) -C fuzzing clean
 
 reallyclean :
 	set -e; for d in ${DIRS}; do $(MAKE) -C $${d} reallyclean; done

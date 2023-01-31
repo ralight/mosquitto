@@ -18,7 +18,7 @@ all:
 endif
 
 mosquitto_passwd : ${OBJS}
-	${CROSS_COMPILE}${CC} ${APP_LDFLAGS} $^ -o $@ $(PASSWD_LDADD)
+	${CROSS_COMPILE}${CC} ${LDFLAGS} ${APP_LDFLAGS} $^ -o $@ $(PASSWD_LDADD)
 
 mosquitto_passwd.o : mosquitto_passwd.c
 	${CROSS_COMPILE}${CC} $(APP_CPPFLAGS) $(APP_CFLAGS) -c $< -o $@
