@@ -1,9 +1,0 @@
-<varlistentry>
-	<term><option>--will-qos</option></term>
-	<listitem>
-		<para>
-			The QoS to use for the Will. Defaults to 0. This must be used in
-			conjunction with <option>--will-topic</option>.
-		</para>
-	</listitem>
-</varlistentry>

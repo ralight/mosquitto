@@ -1,9 +1,0 @@
-<varlistentry>
-	<term><option>-m</option></term>
-	<term><option>--message</option></term>
-	<listitem>
-		<para>
-			Send a single request message from the command line.
-		</para>
-	</listitem>
-</varlistentry>

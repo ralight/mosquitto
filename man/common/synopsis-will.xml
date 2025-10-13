@@ -1,6 +1,0 @@
-<arg>
-	<arg choice='plain'><option>--will-topic</option> <replaceable>topic</replaceable></arg>
-	<arg><option>--will-payload</option> <replaceable>payload</replaceable></arg>
-	<arg><option>--will-qos</option> <replaceable>qos</replaceable></arg>
-	<arg><option>--will-retain</option></arg>
-</arg>

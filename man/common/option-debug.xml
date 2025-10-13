@@ -1,9 +1,0 @@
-<varlistentry>
-	<term><option>-d</option></term>
-	<term><option>--debug</option></term>
-	<listitem>
-		<para>
-			Enable debug messages.
-		</para>
-	</listitem>
-</varlistentry>

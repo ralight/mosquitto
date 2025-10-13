@@ -1,9 +1,0 @@
-<varlistentry>
-	<term><option>-n</option></term>
-	<term><option>--null-message</option></term>
-	<listitem>
-		<para>
-			Send a null (zero length) message.
-		</para>
-	</listitem>
-</varlistentry>

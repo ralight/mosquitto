@@ -1,9 +1,0 @@
-<varlistentry>
-	<term><option>-f</option></term>
-	<term><option>--file</option></term>
-	<listitem>
-		<para>
-			Send the contents of a file as the message.
-		</para>
-	</listitem>
-</varlistentry>

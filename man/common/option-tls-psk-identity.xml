@@ -1,9 +1,0 @@
-<varlistentry>
-	<term><option>--psk-identity</option></term>
-	<listitem>
-		<para>
-			The client identity to use with TLS-PSK support. This may be used
-			instead of a username if the broker is configured to do so.
-		</para>
-	</listitem>
-</varlistentry>

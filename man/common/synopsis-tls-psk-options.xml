@@ -1,8 +1,0 @@
-<cmdsynopsis>
-	<command>tls-psk-options:</command>
-	<sbr/>
-	<arg choice='plain'><option>--psk</option> <replaceable>hex-key</replaceable></arg>
-	<arg choice='plain'><option>--psk-identity</option> <replaceable>identity</replaceable></arg>
-	<arg><option>--ciphers</option> <replaceable>ciphers</replaceable></arg>
-	<arg><option>--tls-version</option> <replaceable>version</replaceable></arg>
-</cmdsynopsis>

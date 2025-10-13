@@ -1,8 +1,0 @@
-<varlistentry>
-	<term><option>--ws</option></term>
-	<listitem>
-		<para>
-			Connect using WebSockets instead of plain TCP.
-		</para>
-	</listitem>
-</varlistentry>

@@ -1,9 +1,0 @@
-<varlistentry>
-	<term><option>-h</option></term>
-	<term><option>--host</option></term>
-	<listitem>
-		<para>
-			Specify the host to connect to. Defaults to localhost.
-		</para>
-	</listitem>
-</varlistentry>

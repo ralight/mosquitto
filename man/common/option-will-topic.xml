@@ -1,9 +1,0 @@
-<varlistentry>
-	<term><option>--will-topic</option></term>
-	<listitem>
-		<para>
-			The topic on which to send a Will, in the event that the client
-			disconnects unexpectedly.
-		</para>
-	</listitem>
-</varlistentry>

@@ -1,7 +1,0 @@
-<refsect2>
-	<title>Disconnect</title>
-	<itemizedlist>
-		<listitem><para><option>session-expiry-interval</option> (32-bit unsigned integer)</para></listitem>
-		<listitem><para><option>user-property</option> (UTF-8 string pair)</para></listitem>
-	</itemizedlist>
-</refsect2>
