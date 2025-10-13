@@ -1,4 +1,0 @@
-add_subdirectory(db_dump)
-add_subdirectory(mosquitto_ctrl)
-add_subdirectory(mosquitto_passwd)
-add_subdirectory(mosquitto_signal)
